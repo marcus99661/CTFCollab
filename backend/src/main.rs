@@ -2,6 +2,7 @@
 mod config;
 mod error;
 mod routes;
+mod services;
 mod replication;
 mod state;
 
@@ -9,6 +10,7 @@ use std::net::SocketAddr;
 
 use app::build_app;
 use config::AppConfig;
+use state::AppState;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -20,7 +22,8 @@ async fn main() {
         )
         .init();
 
-    let app = build_app();
+    let state = AppState::new();
+    let app = build_app(state);
     let config = AppConfig::from_env();
     let addr: SocketAddr = config.addr;
     tracing::info!(%addr, "server listening");

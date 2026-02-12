@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       devOptions: { enabled: true }, // enables SW in dev
       manifest: {
-        name: "Kübervõistluse koostöökeskkond",
+        name: "CTFCollab",
         short_name: "Koostöö",
         start_url: "/",
         display: "standalone",
