@@ -2,6 +2,8 @@
 mod config;
 mod error;
 mod routes;
+mod replication;
+mod state;
 
 use std::net::SocketAddr;
 
