@@ -3,10 +3,13 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
+    routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+use std::convert::Infallible;
+use axum::response::sse::{Event, KeepAlive, Sse};
 use crate::state::{AppState, SharedNote};
 
 #[derive(Debug)]
@@ -68,6 +71,23 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/replication/pull", post(pull))
         .route("/replication/push", post(push))
+        .route("/replication/subscribe", get(subscribe))
+}
+
+
+async fn subscribe(
+    State(state): State<AppState>,
+) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
+    let rx = state.note_updates.subscribe();
+
+    let stream = BroadcastStream::new(rx).filter_map(|msg| {
+        match msg {
+            Ok(ts) => Some(Ok(Event::default().event("note").data(ts.to_string()))),
+            Err(_) => None,
+        }
+    });
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 async fn pull(
@@ -96,6 +116,8 @@ async fn push(
     Json(req): Json<PushRequest>,
 ) -> Result<Json<PushResponse>, ApiError> {
     let mut conflicts = Vec::new();
+    let mut updated = false;
+    let mut new_ts: i64 = 0;
 
     for row in req.rows {
         let incoming = row.new_document_state;
@@ -109,10 +131,15 @@ async fn push(
         // Last-write-wins by updated_at
         if incoming.updated_at >= current.updated_at {
             *current = incoming;
+            updated = true;
+            new_ts = current.updated_at;
         } else {
-            // Server has a newer version -> conflict
             conflicts.push(current.clone());
         }
+    }
+
+    if updated {
+        let _ = state.note_updates.send(new_ts);
     }
 
     Ok(Json(PushResponse { conflicts }))

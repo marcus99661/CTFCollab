@@ -1,6 +1,7 @@
+// backend/src/state.rs
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,10 +14,13 @@ pub struct SharedNote {
 #[derive(Clone)]
 pub struct AppState {
     pub note: Arc<RwLock<SharedNote>>,
+    pub note_updates: broadcast::Sender<i64>,
 }
 
 impl AppState {
     pub fn new() -> Self {
+        let (tx, _rx) = broadcast::channel(64);
+
         let note = SharedNote {
             id: "shared".to_string(),
             content: "Hello! This is the shared note.".to_string(),
@@ -25,6 +29,7 @@ impl AppState {
 
         Self {
             note: Arc::new(RwLock::new(note)),
+            note_updates: tx,
         }
     }
 }

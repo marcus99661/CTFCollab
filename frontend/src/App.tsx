@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDb } from "./db";
+import { startSharedNoteAutoSync } from "./sharedNoteSync";
 
 export default function App() {
     const [content, setContent] = useState("");
@@ -27,6 +28,27 @@ export default function App() {
 
         return () => {
             alive = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let stop: null | (() => void) = null;
+
+        (async () => {
+            const db = await getDb();
+
+            stop = startSharedNoteAutoSync({
+                db,
+                backendBaseUrl: "http://127.0.0.1:3000",
+                noteId: "shared",
+                debounceMs: 900,
+                pollMs: 10_000,
+                onStatus: setStatus
+            });
+        })();
+
+        return () => {
+            if (stop) stop();
         };
     }, []);
 

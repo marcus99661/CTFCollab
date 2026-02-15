@@ -7,7 +7,7 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{Level, Span};
 
 use crate::replication;
-use crate::routes::api::{fib_slow, serve_ctfnote};
+//use crate::routes::api::{};
 use crate::routes::auth;
 use crate::state::AppState;
 use tower_http::cors::CorsLayer;
@@ -25,12 +25,10 @@ pub fn build_app(state: AppState) -> Router {
         });
 
     Router::new()
-        .route("/api/fib/{n}", get(fib_slow))
-        .route("/ctfnote", get(serve_ctfnote))
+        //.route("/ctfnote", get(serve_ctfnote))
         .nest("/auth", auth::router())
         .merge(replication::router())
         .with_state(state)
-        // PoC: allow Vite dev server to call backend
         .layer(CorsLayer::permissive())
         .layer(trace)
 }
