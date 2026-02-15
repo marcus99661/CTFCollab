@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getDb } from "./db";
 import { startSharedNoteAutoSync } from "./sharedNoteSync";
 
+const BACKEND = "http://127.0.0.1:8080";
+
 export default function App() {
     const [content, setContent] = useState("");
     const [status, setStatus] = useState<string>("Loading...");
@@ -39,7 +41,7 @@ export default function App() {
 
             stop = startSharedNoteAutoSync({
                 db,
-                backendBaseUrl: "http://127.0.0.1:3000",
+                backendBaseUrl: BACKEND,
                 noteId: "shared",
                 debounceMs: 900,
                 pollMs: 10_000,
@@ -60,8 +62,6 @@ export default function App() {
         await doc.patch({ content: next, updatedAt: Date.now() });
         setStatus("Saved locally");
     }
-
-const BACKEND = "http://127.0.0.1:3000";
 
 async function syncNow() {
   setStatus("Syncing...");

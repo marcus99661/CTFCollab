@@ -1,42 +1,59 @@
 services:
+  db:
+    image: postgres:18-alpine
+    container_name: ctf_db
+    restart: always
+    environment:
+      POSTGRES_USER: ctf
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: ctfpad
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctf -d ctfpad"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  backend:
+    build:
+      context: backend/
+      dockerfile: Dockerfile
+    image: ctf_backend
+    container_name: ctf_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgres://ctf:mysecretpassword@db:5432/ctfpad
+      RUST_LOG: info,tower_http=info
+      # optional: if your app supports it
+      APP_ADDR: 0.0.0.0:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - backend_network
+
   frontend:
     build:
       context: frontend/
       dockerfile: Dockerfile
     image: ctf_frontend
-    container_name: CTF_frontend
+    container_name: ctf_frontend
     restart: always
-    expose:
-      - "80"
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
     networks:
       - backend_network
-
-  backend:
-    build:
-      context: frontend/
-      dockerfile: Dockerfile
-    image: ctf_backend
-    container_name: CTF_backend
-    restart: always
-    expose:
-      - "80"
-    networks:
-      - backend_network
-
-    #db:
-    #  image: postgres:18-alpine
-    #  restart: always
-    #  environment:
-    #    - POSTGRES_PASSWORD=mysecretpassword
-    #  networks:
-    #    - backend_network
-    #  ports:
-    #    - 5432:5432
-    #  volumes:
-    #    - /database:/var/lib/postgresql/data
-
-
 
 networks:
   backend_network:
-    external: true
+    driver: bridge
+
+volumes:
+  db_data:
