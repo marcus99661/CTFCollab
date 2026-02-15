@@ -1,7 +1,5 @@
-use axum::{extract::Path, response::Html, Json};
 use serde::Serialize;
 
-use crate::error::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct FibResponse {

@@ -1,6 +1,5 @@
 use axum::body::Body;
 use axum::http::Response as HttpResponse;
-use axum::routing::get;
 use axum::Router;
 use std::{fmt, time::Duration};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};

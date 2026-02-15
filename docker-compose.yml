@@ -1,0 +1,42 @@
+services:
+  frontend:
+    build:
+      context: frontend/
+      dockerfile: Dockerfile
+    image: ctf_frontend
+    container_name: CTF_frontend
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - backend_network
+
+  backend:
+    build:
+      context: frontend/
+      dockerfile: Dockerfile
+    image: ctf_backend
+    container_name: CTF_backend
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - backend_network
+
+    #db:
+    #  image: postgres:18-alpine
+    #  restart: always
+    #  environment:
+    #    - POSTGRES_PASSWORD=mysecretpassword
+    #  networks:
+    #    - backend_network
+    #  ports:
+    #    - 5432:5432
+    #  volumes:
+    #    - /database:/var/lib/postgresql/data
+
+
+
+networks:
+  backend_network:
+    external: true
