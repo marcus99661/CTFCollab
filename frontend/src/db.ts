@@ -2,30 +2,39 @@ import { createRxDatabase } from "rxdb";
 import type { RxDatabase } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 
-export type SharedNoteDoc = {
+export type NoteDoc = {
     id: string;
+    title: string;
     content: string;
     updatedAt: number;
+    isDeleted: boolean; // <- rename
 };
 
-const sharedNoteSchema = {
-    title: "shared note schema",
+const noteSchema = {
+    title: "note schema",
     version: 0,
     primaryKey: "id",
     type: "object",
     properties: {
-        id: { type: "string", maxLength: 64 },
+        id: { type: "string", maxLength: 128 },
+        title: { type: "string" },
         content: { type: "string" },
-        updatedAt: { type: "number" }
+        updatedAt: { type: "number" },
+        isDeleted: { type: "boolean" }
     },
-    required: ["id", "content", "updatedAt"]
+    required: ["id", "title", "content", "updatedAt", "isDeleted"]
 } as const;
 
 export type AppCollections = {
-    notes: any; // keep loose for PoC
+    notes: any;
 };
 
 let dbPromise: Promise<RxDatabase<AppCollections>> | null = null;
+
+function makeId() {
+    // Works in modern browsers; fallback for older
+    return (globalThis.crypto?.randomUUID?.() ?? `note_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+}
 
 export async function getDb() {
     if (!dbPromise) {
@@ -36,20 +45,8 @@ export async function getDb() {
             });
 
             await db.addCollections({
-                notes: {
-                    schema: sharedNoteSchema
-                }
+                notes: { schema: noteSchema }
             });
-
-            // Ensure the shared doc exists
-            const existing = await db.notes.findOne("shared").exec();
-            if (!existing) {
-                await db.notes.insert({
-                    id: "shared",
-                    content: "Hello! This is the shared note.",
-                    updatedAt: Date.now()
-                });
-            }
 
             return db;
         })();

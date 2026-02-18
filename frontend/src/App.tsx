@@ -1,134 +1,188 @@
-import { useEffect, useState } from "react";
-import { getDb } from "./db";
-import { startSharedNoteAutoSync } from "./sharedNoteSync";
+import { useEffect, useMemo, useState } from "react";
+import { getDb, type NoteDoc } from "./db";
+import { startNotesAutoSync } from "./notesSync";
 
-const BACKEND = "http://127.0.0.1:8080";
-
-export default function App() {
-    const [content, setContent] = useState("");
-    const [status, setStatus] = useState<string>("Loading...");
-    const [dbReady, setDbReady] = useState(false);
-
-    useEffect(() => {
-        let alive = true;
-
-        (async () => {
-            const db = await getDb();
-            const doc = await db.notes.findOne("shared").exec();
-            if (!doc) return;
-
-            // Subscribe to changes so UI updates across tabs/devices later
-            const sub = doc.$.subscribe((d: any) => {
-                if (!alive || !d) return;
-                setContent(d.content);
-                setDbReady(true);
-                setStatus("Ready (local)");
-            });
-
-            return () => sub.unsubscribe();
-        })();
-
-        return () => {
-            alive = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        let stop: null | (() => void) = null;
-
-        (async () => {
-            const db = await getDb();
-
-            stop = startSharedNoteAutoSync({
-                db,
-                backendBaseUrl: BACKEND,
-                noteId: "shared",
-                debounceMs: 900,
-                pollMs: 10_000,
-                onStatus: setStatus
-            });
-        })();
-
-        return () => {
-            if (stop) stop();
-        };
-    }, []);
-
-    async function saveLocal(next: string) {
-        setContent(next);
-        const db = await getDb();
-        const doc = await db.notes.findOne("shared").exec();
-        if (!doc) return;
-        await doc.patch({ content: next, updatedAt: Date.now() });
-        setStatus("Saved locally");
-    }
-
-async function syncNow() {
-  setStatus("Syncing...");
-  try {
-    const db = await getDb();
-    const doc = await db.notes.findOne("shared").exec();
-    if (!doc) throw new Error("Missing shared note");
-
-    // IMPORTANT: push the actual stored document (do NOT overwrite updatedAt here)
-    const local = doc.toJSON(); // { id, content, updatedAt }
-
-    const pushRes = await fetch(`${BACKEND}/replication/push`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        rows: [{ newDocumentState: local }]
-      })
-    });
-
-    const pushJson = await pushRes.json().catch(() => ({}));
-    // If server reports conflicts, accept server version for PoC
-    if (Array.isArray(pushJson.conflicts) && pushJson.conflicts.length > 0) {
-      for (const c of pushJson.conflicts) {
-        await db.notes.upsert(c);
-      }
-    }
-
-    const pullRes = await fetch(`${BACKEND}/replication/pull`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ checkpoint: null, limit: 10 })
-    });
-
-    const pullJson = await pullRes.json();
-    const docs = pullJson.documents ?? [];
-    for (const d of docs) {
-      await db.notes.upsert(d);
-    }
-
-    setStatus("Synced");
-  } catch (e) {
-    setStatus("Sync failed (offline?)");
-  }
+function makeId() {
+    return (
+        globalThis.crypto?.randomUUID?.() ??
+        `note_${Date.now()}_${Math.random().toString(16).slice(2)}`
+    );
 }
 
+export default function App() {
+    const [status, setStatus] = useState("Loading…");
+    const [notes, setNotes] = useState<NoteDoc[]>([]);
+    const [selectedId, setSelectedId] = useState<string>("");
+
+    // New note UI (avoid prompt() which can be blocked in some contexts)
+    const [newTitle, setNewTitle] = useState("");
+
+    const selected = useMemo(
+        () => notes.find((n) => n.id === selectedId) ?? null,
+        [notes, selectedId]
+    );
+
+    useEffect(() => {
+        let stopSync: null | (() => void) = null;
+        let sub: any = null;
+
+        (async () => {
+            const db = await getDb();
+
+            // Start auto sync. In Docker behind nginx proxy, baseUrl should be "".
+            stopSync = startNotesAutoSync({
+                db,
+                baseUrl: "", // change to "http://127.0.0.1:3000" for local dev if you don't proxy
+                debounceMs: 900,
+                pollMs: 4000,
+                onStatus: setStatus,
+            });
+
+            // Reactive list of notes
+            sub = db.notes.find().$.subscribe((docs: any[]) => {
+                const list: NoteDoc[] = (docs ?? [])
+                    .map((d: any) => (d?.toJSON ? d.toJSON() : d))
+                    .filter((d: NoteDoc) => !d.isDeleted)
+                    .sort((a: NoteDoc, b: NoteDoc) => b.updatedAt - a.updatedAt);
+
+                setNotes(list);
+
+                // Avoid stale-closure issue by using functional setState.
+                setSelectedId((prev) => prev || list[0]?.id || "");
+            });
+
+            setStatus("Ready");
+        })().catch((e) => {
+            console.error("App init failed:", e);
+            setStatus("Init failed (check console)");
+        });
+
+        return () => {
+            if (sub) sub.unsubscribe();
+            if (stopSync) stopSync();
+        };
+    }, []);
+
+    async function createNote() {
+        const title = newTitle.trim() || "Untitled note";
+
+        try {
+            const db = await getDb();
+            const id = makeId();
+
+            await db.notes.insert({
+                id,
+                title,
+                content: "",
+                updatedAt: Date.now(),
+                isDeleted: false,
+            });
+
+            setSelectedId(id);
+            setNewTitle("");
+        } catch (e) {
+            console.error("createNote failed:", e);
+            setStatus("Create note failed (check console)");
+        }
+    }
+
+    async function deleteSelected() {
+        if (!selected) return;
+        if (!confirm(`Delete "${selected.title}"?`)) return;
+
+        try {
+            const db = await getDb();
+            const doc = await db.notes.findOne(selected.id).exec();
+            if (!doc) return;
+
+            await doc.patch({ isDeleted: true, updatedAt: Date.now() });
+            setSelectedId("");
+        } catch (e) {
+            console.error("deleteSelected failed:", e);
+            setStatus("Delete failed (check console)");
+        }
+    }
+
+    async function updateContent(next: string) {
+        if (!selected) return;
+        try {
+            const db = await getDb();
+            const doc = await db.notes.findOne(selected.id).exec();
+            if (!doc) return;
+
+            await doc.patch({ content: next, updatedAt: Date.now() });
+        } catch (e) {
+            console.error("updateContent failed:", e);
+            setStatus("Save failed (check console)");
+        }
+    }
+
+    async function updateTitle(next: string) {
+        if (!selected) return;
+        try {
+            const db = await getDb();
+            const doc = await db.notes.findOne(selected.id).exec();
+            if (!doc) return;
+
+            await doc.patch({ title: next, updatedAt: Date.now() });
+        } catch (e) {
+            console.error("updateTitle failed:", e);
+            setStatus("Save failed (check console)");
+        }
+    }
+
     return (
-        <div style={{ maxWidth: 900, margin: "40px auto", padding: 16 }}>
-            <h1>Shared Note PoC</h1>
-            <p>Status: {status}</p>
+        <div style={{ maxWidth: 980, margin: "32px auto", padding: 16 }}>
+            <h1>Notes PoC</h1>
+            <div style={{ marginBottom: 12, opacity: 0.8 }}>Status: {status}</div>
 
-            <textarea
-                style={{ width: "100%", height: 300, fontSize: 16 }}
-                value={content}
-                disabled={!dbReady}
-                onChange={(e) => saveLocal(e.target.value)}
-            />
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                <select
+                    value={selectedId}
+                    onChange={(e) => setSelectedId(e.target.value)}
+                    style={{ padding: 8, minWidth: 260 }}
+                >
+                    {notes.map((n) => (
+                        <option key={n.id} value={n.id}>
+                            {n.title}
+                        </option>
+                    ))}
+                </select>
 
-            <div style={{ marginTop: 12, display: "flex", gap: 12 }}>
-                <button onClick={syncNow} disabled={!dbReady}>
-                    Sync now
+                <input
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="New note title…"
+                    style={{ padding: 8, minWidth: 220 }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") createNote();
+                    }}
+                />
+
+                <button onClick={createNote}>Create</button>
+                <button onClick={deleteSelected} disabled={!selected}>
+                    Delete
                 </button>
             </div>
 
-            <p style={{ marginTop: 12, opacity: 0.7 }}>
-                Tip: open this app in two browser windows to see local updates. Later we’ll
-                make it sync automatically + handle conflicts.
-            </p>
+            {!selected ? (
+                <div style={{ opacity: 0.7 }}>No note selected.</div>
+            ) : (
+                <>
+                    <input
+                        value={selected.title}
+                        onChange={(e) => updateTitle(e.target.value)}
+                        style={{ width: "100%", padding: 10, fontSize: 16, marginBottom: 10 }}
+                    />
+
+                    <textarea
+                        value={selected.content}
+                        onChange={(e) => updateContent(e.target.value)}
+                        style={{ width: "100%", height: 380, padding: 10, fontSize: 15 }}
+                        placeholder="Write your note…"
+                    />
+                </>
+            )}
         </div>
     );
 }

@@ -3,14 +3,11 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
-    routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use tokio_stream::{wrappers::BroadcastStream, StreamExt};
-use std::convert::Infallible;
-use axum::response::sse::{Event, KeepAlive, Sse};
-use crate::state::{AppState, SharedNote};
+
+use crate::state::{AppState, NoteDoc};
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -45,14 +42,14 @@ pub struct PullRequest {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PullResponse {
-    pub documents: Vec<SharedNote>,
+    pub documents: Vec<NoteDoc>,
     pub checkpoint: Option<Checkpoint>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PushRow {
-    pub new_document_state: SharedNote,
+    pub new_document_state: NoteDoc,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -64,51 +61,67 @@ pub struct PushRequest {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PushResponse {
-    pub conflicts: Vec<SharedNote>,
+    pub conflicts: Vec<NoteDoc>,
 }
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/replication/pull", post(pull))
         .route("/replication/push", post(push))
-        .route("/replication/subscribe", get(subscribe))
-}
-
-
-async fn subscribe(
-    State(state): State<AppState>,
-) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
-    let rx = state.note_updates.subscribe();
-
-    let stream = BroadcastStream::new(rx).filter_map(|msg| {
-        match msg {
-            Ok(ts) => Some(Ok(Event::default().event("note").data(ts.to_string()))),
-            Err(_) => None,
-        }
-    });
-
-    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 async fn pull(
     State(state): State<AppState>,
     Json(req): Json<PullRequest>,
 ) -> Result<Json<PullResponse>, ApiError> {
-    let note = state.note.read().await.clone();
+    let limit = req.limit.unwrap_or(200).min(1000) as i64;
 
-    let should_send = match req.checkpoint {
-        None => true,
-        Some(cp) => note.updated_at > cp.updated_at,
+    let docs: Vec<NoteDoc> = match req.checkpoint.clone() {
+        None => {
+            sqlx::query_as!(
+                NoteDoc,
+                r#"
+                SELECT id, title, content, updated_at, is_deleted
+                FROM notes
+                ORDER BY updated_at ASC, id ASC
+                LIMIT $1
+                "#,
+                limit
+            )
+                .fetch_all(&state.db)
+                .await
+                .map_err(|e| ApiError::Internal(e.to_string()))?
+        }
+        Some(cp) => {
+            sqlx::query_as!(
+                NoteDoc,
+                r#"
+                SELECT id, title, content, updated_at, is_deleted
+                FROM notes
+                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
+                ORDER BY updated_at ASC, id ASC
+                LIMIT $3
+                "#,
+                cp.updated_at,
+                cp.id,
+                limit
+            )
+                .fetch_all(&state.db)
+                .await
+                .map_err(|e| ApiError::Internal(e.to_string()))?
+        }
     };
 
-    let documents = if should_send { vec![note.clone()] } else { vec![] };
-
-    let checkpoint = Some(Checkpoint {
-        id: note.id,
-        updated_at: note.updated_at,
+    // New checkpoint = last doc we returned (stable ordering)
+    let new_checkpoint = docs.last().map(|d| Checkpoint {
+        id: d.id.clone(),
+        updated_at: d.updated_at,
     });
 
-    Ok(Json(PullResponse { documents, checkpoint }))
+    Ok(Json(PullResponse {
+        documents: docs,
+        checkpoint: new_checkpoint.or(req.checkpoint),
+    }))
 }
 
 async fn push(
@@ -116,30 +129,59 @@ async fn push(
     Json(req): Json<PushRequest>,
 ) -> Result<Json<PushResponse>, ApiError> {
     let mut conflicts = Vec::new();
-    let mut updated = false;
-    let mut new_ts: i64 = 0;
 
     for row in req.rows {
         let incoming = row.new_document_state;
 
-        if incoming.id != "shared" {
-            return Err(ApiError::BadRequest("Only id='shared' is allowed in PoC".into()));
+        if incoming.id.is_empty() {
+            return Err(ApiError::BadRequest("id is required".into()));
+        }
+        if incoming.title.is_empty() {
+            return Err(ApiError::BadRequest("title is required".into()));
         }
 
-        let mut current = state.note.write().await;
+        let applied = sqlx::query_as!(
+            NoteDoc,
+            r#"
+            INSERT INTO notes (id, title, content, updated_at, is_deleted)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE
+            SET title = EXCLUDED.title,
+                content = EXCLUDED.content,
+                updated_at = EXCLUDED.updated_at,
+                is_deleted = EXCLUDED.is_deleted
+            WHERE EXCLUDED.updated_at >= notes.updated_at
+            RETURNING id, title, content, updated_at, is_deleted
+            "#,
+            incoming.id,
+            incoming.title,
+            incoming.content,
+            incoming.updated_at,
+            incoming.is_deleted
+        )
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| ApiError::Internal(e.to_string()))?;
 
-        // Last-write-wins by updated_at
-        if incoming.updated_at >= current.updated_at {
-            *current = incoming;
-            updated = true;
-            new_ts = current.updated_at;
-        } else {
-            conflicts.push(current.clone());
+
+        if applied.is_none() {
+            // Server has newer version -> return server doc as conflict
+            if let Some(server_doc) = sqlx::query_as!(
+                NoteDoc,
+                r#"
+                SELECT id, title, content, updated_at, is_deleted
+                FROM notes
+                WHERE id = $1
+                "#,
+                incoming.id
+            )
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| ApiError::Internal(e.to_string()))?
+            {
+                conflicts.push(server_doc);
+            }
         }
-    }
-
-    if updated {
-        let _ = state.note_updates.send(new_ts);
     }
 
     Ok(Json(PushResponse { conflicts }))

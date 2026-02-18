@@ -22,7 +22,8 @@ async fn main() {
         )
         .init();
 
-    let state = AppState::new();
+    let cfg = AppConfig::from_env();
+    let state = AppState::new(&cfg).await.unwrap();
     let app = build_app(state);
     let config = AppConfig::from_env();
     let addr: SocketAddr = config.addr;

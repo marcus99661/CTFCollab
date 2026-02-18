@@ -1,41 +1,59 @@
-// backend/src/state.rs
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::{RwLock, broadcast};
+use sqlx::{postgres::PgPoolOptions, PgPool};
+
+use crate::config::AppConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SharedNote {
+pub struct NoteDoc {
     pub id: String,
+    pub title: String,
     pub content: String,
-    pub updated_at: i64, // unix millis
+    pub updated_at: i64,
+    pub is_deleted: bool,
 }
 
 #[derive(Clone)]
 pub struct AppState {
-    pub note: Arc<RwLock<SharedNote>>,
-    pub note_updates: broadcast::Sender<i64>,
+    pub db: PgPool,
 }
 
 impl AppState {
-    pub fn new() -> Self {
-        let (tx, _rx) = broadcast::channel(64);
+    pub async fn new(cfg: &AppConfig) -> Result<Self, sqlx::Error> {
+        let db = PgPoolOptions::new()
+            .max_connections(10)
+            .connect(&cfg.database_url)
+            .await?;
 
-        let note = SharedNote {
-            id: "shared".to_string(),
-            content: "Hello! This is the shared note.".to_string(),
-            updated_at: now_ms(),
-        };
+        init_db(&db).await?;
 
-        Self {
-            note: Arc::new(RwLock::new(note)),
-            note_updates: tx,
-        }
+        Ok(Self { db })
     }
 }
 
-fn now_ms() -> i64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let d = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    d.as_millis() as i64
+async fn init_db(db: &PgPool) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS notes (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            updated_at BIGINT NOT NULL,
+            is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+        )
+        "#,
+    )
+        .execute(db)
+        .await?;
+
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS notes_updated_idx
+        ON notes (updated_at, id)
+        "#,
+    )
+        .execute(db)
+        .await?;
+
+    Ok(())
 }
