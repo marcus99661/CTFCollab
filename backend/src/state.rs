@@ -3,7 +3,7 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use crate::config::AppConfig;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteDoc {
     pub id: String,

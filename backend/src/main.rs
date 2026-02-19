@@ -5,6 +5,9 @@ mod routes;
 mod services;
 mod replication;
 mod state;
+mod models;
+mod replication_events;
+mod replication_challenges;
 
 use std::net::SocketAddr;
 

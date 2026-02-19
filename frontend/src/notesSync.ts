@@ -136,8 +136,14 @@ export function startNotesAutoSync(opts: {
     pollTimer = window.setInterval(() => sync("poll"), pollMs);
     window.addEventListener("online", () => sync("online"));
 
-    // initial sync
-    sync("startup");
+    // initial sync: mark all existing local notes dirty so they get pushed
+    (async () => {
+        const allDocs = await opts.db.notes.find().exec();
+        for (const doc of allDocs) {
+            dirtyIds.add((doc as any).id as string);
+        }
+        sync("startup");
+    })();
 
     return () => {
         stopped = true;

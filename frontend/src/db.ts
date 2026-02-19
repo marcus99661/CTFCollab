@@ -7,7 +7,28 @@ export type NoteDoc = {
     title: string;
     content: string;
     updatedAt: number;
-    isDeleted: boolean; // <- rename
+    isDeleted: boolean;
+};
+
+export type EventDoc = {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: number;
+    updatedAt: number;
+    isDeleted: boolean;
+};
+
+export type ChallengeDoc = {
+    id: string;
+    eventId: string;
+    title: string;
+    category: string;
+    points: number;
+    url: string;
+    createdAt: number;
+    updatedAt: number;
+    isDeleted: boolean;
 };
 
 const noteSchema = {
@@ -25,16 +46,48 @@ const noteSchema = {
     required: ["id", "title", "content", "updatedAt", "isDeleted"]
 } as const;
 
+const eventSchema = {
+    title: "event schema",
+    version: 0,
+    primaryKey: "id",
+    type: "object",
+    properties: {
+        id: { type: "string", maxLength: 128 },
+        name: { type: "string" },
+        description: { type: "string" },
+        createdAt: { type: "number" },
+        updatedAt: { type: "number" },
+        isDeleted: { type: "boolean" }
+    },
+    required: ["id", "name", "description", "createdAt", "updatedAt", "isDeleted"]
+} as const;
+
+const challengeSchema = {
+    title: "challenge schema",
+    version: 0,
+    primaryKey: "id",
+    type: "object",
+    properties: {
+        id: { type: "string", maxLength: 128 },
+        eventId: { type: "string" },
+        title: { type: "string" },
+        category: { type: "string" },
+        points: { type: "number" },
+        url: { type: "string" },
+        createdAt: { type: "number" },
+        updatedAt: { type: "number" },
+        isDeleted: { type: "boolean" }
+    },
+    required: ["id", "eventId", "title", "category", "points", "url", "createdAt", "updatedAt", "isDeleted"]
+} as const;
+
 export type AppCollections = {
     notes: any;
+    events: any;
+    challenges: any;
 };
 
 let dbPromise: Promise<RxDatabase<AppCollections>> | null = null;
-
-function makeId() {
-    // Works in modern browsers; fallback for older
-    return (globalThis.crypto?.randomUUID?.() ?? `note_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-}
 
 export async function getDb() {
     if (!dbPromise) {
@@ -45,7 +98,9 @@ export async function getDb() {
             });
 
             await db.addCollections({
-                notes: { schema: noteSchema }
+                notes: { schema: noteSchema },
+                events: { schema: eventSchema },
+                challenges: { schema: challengeSchema }
             });
 
             return db;

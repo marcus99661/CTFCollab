@@ -90,7 +90,7 @@ async fn pull(
             )
                 .fetch_all(&state.db)
                 .await
-                .map_err(|e| ApiError::Internal(e.to_string()))?
+                .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?
         }
         Some(cp) => {
             sqlx::query_as!(
@@ -108,7 +108,7 @@ async fn pull(
             )
                 .fetch_all(&state.db)
                 .await
-                .map_err(|e| ApiError::Internal(e.to_string()))?
+                .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?
         }
     };
 
@@ -140,7 +140,7 @@ async fn push(
             return Err(ApiError::BadRequest("title is required".into()));
         }
 
-        let applied = sqlx::query_as!(
+        let applied: Option<NoteDoc> = sqlx::query_as!(
             NoteDoc,
             r#"
             INSERT INTO notes (id, title, content, updated_at, is_deleted)
@@ -161,12 +161,12 @@ async fn push(
         )
             .fetch_optional(&state.db)
             .await
-            .map_err(|e| ApiError::Internal(e.to_string()))?;
+            .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?;
 
 
         if applied.is_none() {
             // Server has newer version -> return server doc as conflict
-            if let Some(server_doc) = sqlx::query_as!(
+            let server_doc: Option<NoteDoc> = sqlx::query_as!(
                 NoteDoc,
                 r#"
                 SELECT id, title, content, updated_at, is_deleted
@@ -177,9 +177,10 @@ async fn push(
             )
                 .fetch_optional(&state.db)
                 .await
-                .map_err(|e| ApiError::Internal(e.to_string()))?
-            {
-                conflicts.push(server_doc);
+                .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?;
+
+            if let Some(doc) = server_doc {
+                conflicts.push(doc);
             }
         }
     }

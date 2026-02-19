@@ -6,6 +6,8 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{Level, Span};
 
 use crate::replication;
+use crate::replication_challenges;
+use crate::replication_events;
 //use crate::routes::api::{};
 use crate::routes::auth;
 use crate::state::AppState;
@@ -27,6 +29,8 @@ pub fn build_app(state: AppState) -> Router {
         //.route("/ctfnote", get(serve_ctfnote))
         .nest("/auth", auth::router())
         .merge(replication::router())
+        .merge(replication_challenges::router())
+        .merge(replication_events::router())
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(trace)
