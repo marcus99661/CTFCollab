@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS events_updated_idx
 
 CREATE TABLE IF NOT EXISTS challenges (
                                           id TEXT PRIMARY KEY,
-                                          event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+                                          event_id TEXT NOT NULL DEFAULT '',
     title TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT '',
     points INT NOT NULL DEFAULT 0,

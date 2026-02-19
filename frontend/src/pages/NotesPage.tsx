@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getDb, type NoteDoc } from "../db";
-import { startNotesAutoSync } from "../notesSync";
-
-function makeId() {
-    return (
-        globalThis.crypto?.randomUUID?.() ??
-        `note_${Date.now()}_${Math.random().toString(16).slice(2)}`
-    );
-}
+import { startNotesAutoSync } from "../sync/notesSync";
+import { makeId } from "../utils";
 
 export default function NotesPage() {
     const [status, setStatus] = useState("Loading…");

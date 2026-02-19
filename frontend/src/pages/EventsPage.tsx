@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDb, type EventDoc } from "../db";
-import { startEventsAutoSync } from "../eventsSync";
+import { startEventsAutoSync } from "../sync/eventsSync";
+import { makeId } from "../utils";
 
 export default function EventsPage() {
     const [status, setStatus] = useState("Loading…");
@@ -51,7 +52,7 @@ export default function EventsPage() {
         try {
             const db = await getDb();
             await db.events.insert({
-                id: crypto.randomUUID(),
+                id: makeId(),
                 name,
                 description: newDesc.trim(),
                 createdAt: Date.now(),

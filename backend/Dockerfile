@@ -1,12 +1,27 @@
 FROM rust AS builder
 WORKDIR /app
-COPY . .
+
+# ── Dependency cache layer ────────────────────────────────────────────────────
+# Copy only the manifests and build a stub binary so all crate dependencies get
+# compiled and stored in a Docker layer. This layer is reused on every rebuild
+# as long as Cargo.toml / Cargo.lock don't change.
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release
-#RUN cargo build
+# Remove the stub artifacts so Cargo recompiles the real source next step.
+RUN rm -rf src target/release/deps/baka*
+
+# ── Application build ─────────────────────────────────────────────────────────
+COPY . .
+# SQLX_OFFLINE tells sqlx to use the checked-in .sqlx query files instead of
+# connecting to a live database at compile time.
+ENV SQLX_OFFLINE=true
+RUN cargo build --release
 
 FROM debian:bookworm-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/baka /app/baka
 ENV BIND_ADDR=0.0.0.0:3000
 EXPOSE 3000

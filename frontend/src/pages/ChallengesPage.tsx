@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDb, type ChallengeDoc, type EventDoc } from "../db";
-import { startChallengesAutoSync } from "../challengesSync";
+import { startChallengesAutoSync } from "../sync/challengesSync";
+import { makeId } from "../utils";
 
 export default function ChallengesPage() {
     const [status, setStatus] = useState("Loading…");
@@ -72,7 +73,7 @@ export default function ChallengesPage() {
         try {
             const db = await getDb();
             await db.challenges.insert({
-                id: crypto.randomUUID(),
+                id: makeId(),
                 eventId: newEventId,
                 title,
                 category: newCategory.trim(),
