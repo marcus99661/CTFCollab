@@ -1,13 +1,10 @@
-﻿mod app;
+mod app;
 mod config;
 mod error;
+mod models;
 mod routes;
 mod services;
-mod replication;
 mod state;
-mod models;
-mod replication_events;
-mod replication_challenges;
 
 use std::net::SocketAddr;
 
@@ -27,9 +24,9 @@ async fn main() {
 
     let cfg = AppConfig::from_env();
     let state = AppState::new(&cfg).await.unwrap();
+    routes::yjs::start_compaction(state.db.clone());
     let app = build_app(state);
-    let config = AppConfig::from_env();
-    let addr: SocketAddr = config.addr;
+    let addr: SocketAddr = AppConfig::from_env().addr;
     tracing::info!(%addr, "server listening");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

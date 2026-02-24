@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted)\n            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)\n            ON CONFLICT (id) DO UPDATE\n            SET event_id = EXCLUDED.event_id,\n                title = EXCLUDED.title,\n                category = EXCLUDED.category,\n                points = EXCLUDED.points,\n                url = EXCLUDED.url,\n                created_at = EXCLUDED.created_at,\n                updated_at = EXCLUDED.updated_at,\n                is_deleted = EXCLUDED.is_deleted\n            WHERE EXCLUDED.updated_at >= challenges.updated_at\n            RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted\n            ",
+  "query": "\n            INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            ON CONFLICT (id) DO UPDATE\n            SET event_id   = EXCLUDED.event_id,\n                title      = EXCLUDED.title,\n                category   = EXCLUDED.category,\n                points     = EXCLUDED.points,\n                url        = EXCLUDED.url,\n                created_at = EXCLUDED.created_at,\n                updated_at = EXCLUDED.updated_at,\n                is_deleted = EXCLUDED.is_deleted\n            WHERE EXCLUDED.updated_at >= challenges.updated_at\n            RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted\n            ",
   "describe": {
     "columns": [
       {
@@ -128,5 +128,5 @@
       false
     ]
   },
-  "hash": "f4fb3df350a43a73f76b5b25f8674cbe96b0b977fd533bb5e66d420f1a520bc7"
+  "hash": "aa7815e5a54d150daf33e620e169c1e92ad398954011a264e7a88f9a9420c6de"
 }

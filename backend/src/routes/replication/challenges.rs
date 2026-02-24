@@ -1,33 +1,9 @@
-use axum::{extract::State, Json, Router};
-use axum::routing::post;
-use crate::state::AppState;
-use crate::replication::{ApiError, Checkpoint, PullRequest};
+use axum::{extract::State, routing::post, Json, Router};
+
+use crate::error::AppError;
 use crate::models::ChallengeDoc;
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PullResponse<T> {
-    pub documents: Vec<T>,
-    pub checkpoint: Option<Checkpoint>,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PushRow<T> {
-    pub new_document_state: T,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PushRequest<T> {
-    pub rows: Vec<PushRow<T>>,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PushResponse<T> {
-    pub conflicts: Vec<T>,
-}
+use crate::state::AppState;
+use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -35,10 +11,10 @@ pub fn router() -> Router<AppState> {
         .route("/replication/challenges/push", post(push))
 }
 
-pub async fn pull(
+async fn pull(
     State(state): State<AppState>,
     Json(req): Json<PullRequest>,
-) -> Result<Json<PullResponse<ChallengeDoc>>, ApiError> {
+) -> Result<Json<PullResponse<ChallengeDoc>>, AppError> {
     let limit = req.limit.unwrap_or(200).min(1000) as i64;
 
     let docs: Vec<ChallengeDoc> = match req.checkpoint.clone() {
@@ -53,9 +29,9 @@ pub async fn pull(
                 "#,
                 limit
             )
-                .fetch_all(&state.db)
-                .await
-                .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
         }
         Some(cp) => {
             sqlx::query_as!(
@@ -71,9 +47,9 @@ pub async fn pull(
                 cp.id,
                 limit
             )
-                .fetch_all(&state.db)
-                .await
-                .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
         }
     };
 
@@ -88,10 +64,10 @@ pub async fn pull(
     }))
 }
 
-pub async fn push(
+async fn push(
     State(state): State<AppState>,
     Json(req): Json<PushRequest<ChallengeDoc>>,
-) -> Result<Json<PushResponse<ChallengeDoc>>, ApiError> {
+) -> Result<Json<PushResponse<ChallengeDoc>>, AppError> {
     let mut conflicts = Vec::new();
 
     for row in req.rows {
@@ -101,13 +77,13 @@ pub async fn push(
             ChallengeDoc,
             r#"
             INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (id) DO UPDATE
-            SET event_id = EXCLUDED.event_id,
-                title = EXCLUDED.title,
-                category = EXCLUDED.category,
-                points = EXCLUDED.points,
-                url = EXCLUDED.url,
+            SET event_id   = EXCLUDED.event_id,
+                title      = EXCLUDED.title,
+                category   = EXCLUDED.category,
+                points     = EXCLUDED.points,
+                url        = EXCLUDED.url,
                 created_at = EXCLUDED.created_at,
                 updated_at = EXCLUDED.updated_at,
                 is_deleted = EXCLUDED.is_deleted
@@ -124,9 +100,9 @@ pub async fn push(
             incoming.updated_at,
             incoming.is_deleted
         )
-            .fetch_optional(&state.db)
-            .await
-            .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?;
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if applied.is_none() {
             let server_doc: Option<ChallengeDoc> = sqlx::query_as!(
@@ -138,9 +114,9 @@ pub async fn push(
                 "#,
                 incoming.id
             )
-                .fetch_optional(&state.db)
-                .await
-                .map_err(|e: sqlx::Error| ApiError::Internal(e.to_string()))?;
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
             if let Some(doc) = server_doc {
                 conflicts.push(doc);

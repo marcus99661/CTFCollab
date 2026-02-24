@@ -1,21 +1,12 @@
-use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use crate::config::AppConfig;
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-#[serde(rename_all = "camelCase")]
-pub struct NoteDoc {
-    pub id: String,
-    pub title: String,
-    pub content: String,
-    pub updated_at: i64,
-    pub is_deleted: bool,
-}
+use crate::routes::yjs::{new_rooms, Rooms};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub db: PgPool,
+    pub db:    PgPool,
+    pub rooms: Rooms,
 }
 
 impl AppState {
@@ -25,6 +16,6 @@ impl AppState {
             .connect(&cfg.database_url)
             .await?;
 
-        Ok(Self { db })
+        Ok(Self { db, rooms: new_rooms() })
     }
 }
