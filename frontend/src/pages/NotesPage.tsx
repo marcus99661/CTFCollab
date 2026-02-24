@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getDb, type NoteDoc } from "../db";
 import { startNotesAutoSync } from "../sync/notesSync";
 import { makeId } from "../utils";
+import NoteEditor from "../components/NoteEditor";
 
 export default function NotesPage() {
     const [status, setStatus] = useState("Loading…");
@@ -92,20 +93,6 @@ export default function NotesPage() {
         }
     }
 
-    async function updateContent(next: string) {
-        if (!selected) return;
-        try {
-            const db = await getDb();
-            const doc = await db.notes.findOne(selected.id).exec();
-            if (!doc) return;
-
-            await doc.patch({ content: next, updatedAt: Date.now() });
-        } catch (e) {
-            console.error("updateContent failed:", e);
-            setStatus("Save failed (check console)");
-        }
-    }
-
     async function updateTitle(next: string) {
         if (!selected) return;
         try {
@@ -164,12 +151,7 @@ export default function NotesPage() {
                         style={{ width: "100%", padding: 10, fontSize: 16, marginBottom: 10 }}
                     />
 
-                    <textarea
-                        value={selected.content}
-                        onChange={(e) => updateContent(e.target.value)}
-                        style={{ width: "100%", height: 380, padding: 10, fontSize: 15 }}
-                        placeholder="Write your note…"
-                    />
+                    <NoteEditor key={selected.id} noteId={selected.id} />
                 </>
             )}
         </div>

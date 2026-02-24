@@ -146,8 +146,7 @@ async fn push(
             INSERT INTO notes (id, title, content, updated_at, is_deleted)
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (id) DO UPDATE
-            SET title = EXCLUDED.title,
-                content = EXCLUDED.content,
+            SET title      = EXCLUDED.title,
                 updated_at = EXCLUDED.updated_at,
                 is_deleted = EXCLUDED.is_deleted
             WHERE EXCLUDED.updated_at >= notes.updated_at

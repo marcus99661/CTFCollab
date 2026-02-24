@@ -5,18 +5,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "concurrently -n vite,yjs -c cyan,yellow \"vite\" \"node yjs-server/server.js\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tiptap/extension-collaboration": "^2.11.7",
+    "@tiptap/extension-collaboration-cursor": "^2.11.7",
+    "@tiptap/react": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
+    "concurrently": "^9.1.2",
     "dexie": "^4.3.0",
     "npm-check-updates": "^19.3.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
     "rxdb": "^16.21.1",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "y-indexeddb": "^9.0.12",
+    "y-websocket": "^2.1.0",
+    "yjs": "^13.6.23"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

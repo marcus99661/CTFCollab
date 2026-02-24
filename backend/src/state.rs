@@ -25,35 +25,6 @@ impl AppState {
             .connect(&cfg.database_url)
             .await?;
 
-        init_db(&db).await?;
-
         Ok(Self { db })
     }
-}
-
-async fn init_db(db: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS notes (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            updated_at BIGINT NOT NULL,
-            is_deleted BOOLEAN NOT NULL DEFAULT FALSE
-        )
-        "#,
-    )
-        .execute(db)
-        .await?;
-
-    sqlx::query(
-        r#"
-        CREATE INDEX IF NOT EXISTS notes_updated_idx
-        ON notes (updated_at, id)
-        "#,
-    )
-        .execute(db)
-        .await?;
-
-    Ok(())
 }

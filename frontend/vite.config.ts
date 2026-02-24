@@ -4,6 +4,16 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      // Mirrors the nginx /yjs/ block for local dev (npm run dev:full)
+      "/yjs": {
+        target: "ws://localhost:4444",
+        ws: true,
+        rewrite: (path) => path.replace(/^\/yjs/, ""),
+      },
+    },
+  },
   plugins: [react(),
     VitePWA({
       registerType: "autoUpdate",

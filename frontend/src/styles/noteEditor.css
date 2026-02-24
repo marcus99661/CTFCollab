@@ -1,0 +1,169 @@
+/* ── Editor shell ─────────────────────────────────────────────── */
+.note-editor-wrap {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #444;
+    border-radius: 4px;
+    min-height: 420px;
+    background: #1e1e1e;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────── */
+.note-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 6px;
+    border-bottom: 1px solid #444;
+    background: #2a2a2a;
+    border-radius: 4px 4px 0 0;
+}
+
+.tb-btn {
+    padding: 3px 7px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.8);
+    transition: background 0.1s, border-color 0.1s;
+    white-space: nowrap;
+}
+
+.tb-btn:hover:not(:disabled) {
+    background: #3a3a3a;
+    border-color: #555;
+}
+
+.tb-btn--active {
+    background: #1e3a5f;
+    border-color: #4a7fc1;
+    color: #7eb8f7;
+}
+
+.tb-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.tb-divider {
+    width: 1px;
+    height: 18px;
+    background: #444;
+    margin: 0 3px;
+    flex-shrink: 0;
+}
+
+/* ── Status bar ───────────────────────────────────────────────── */
+.note-editor-status {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-bottom: 1px solid #3a3a3a;
+    opacity: 0.6;
+    text-transform: capitalize;
+    background: #252525;
+}
+
+/* ── ProseMirror content area ─────────────────────────────────── */
+.note-editor .ProseMirror {
+    min-height: 380px;
+    padding: 12px 14px;
+    outline: none;
+    font-size: 15px;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.note-editor .ProseMirror > * + * {
+    margin-top: 0.5em;
+}
+
+.note-editor .ProseMirror p {
+    margin: 0;
+}
+
+.note-editor .ProseMirror h1,
+.note-editor .ProseMirror h2,
+.note-editor .ProseMirror h3 {
+    margin: 1em 0 0.25em;
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.note-editor .ProseMirror ul,
+.note-editor .ProseMirror ol {
+    padding-left: 1.5em;
+}
+
+.note-editor .ProseMirror code {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    font-size: 0.88em;
+    color: #e06c75;
+}
+
+.note-editor .ProseMirror pre {
+    background: #141414;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 0.75em 1em;
+    overflow-x: auto;
+}
+
+.note-editor .ProseMirror pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.note-editor .ProseMirror blockquote {
+    border-left: 3px solid #555;
+    margin: 0.5em 0;
+    padding-left: 1em;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.note-editor .ProseMirror hr {
+    border: none;
+    border-top: 1px solid #444;
+    margin: 1em 0;
+}
+
+/* Placeholder when doc is empty */
+.note-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #555;
+    pointer-events: none;
+    height: 0;
+}
+
+/* ── Collaboration cursors ────────────────────────────────────── */
+.collaboration-cursor__caret {
+    border-left: 1px solid #fff;
+    border-right: 1px solid #fff;
+    margin-left: -1px;
+    margin-right: -1px;
+    pointer-events: none;
+    position: relative;
+    word-break: normal;
+}
+
+.collaboration-cursor__label {
+    border-radius: 3px 3px 3px 0;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    left: -1px;
+    line-height: normal;
+    padding: 2px 6px;
+    position: absolute;
+    top: -1.5em;
+    user-select: none;
+    white-space: nowrap;
+}

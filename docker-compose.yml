@@ -35,8 +35,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "3000:3000"
+    networks:
+      - backend_network
+
+  yjs:
+    build:
+      context: frontend/yjs-server/
+      dockerfile: Dockerfile
+    image: ctf_yjs
+    container_name: ctf_yjs
+    restart: always
+    environment:
+      DATABASE_URL: postgres://ctf:mysecretpassword@db:5432/ctfpad
+      PORT: 4444
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - backend_network
 
@@ -49,6 +63,7 @@ services:
     restart: always
     depends_on:
       - backend
+      - yjs
     ports:
       - "8080:80"
     networks:
