@@ -2,11 +2,15 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use crate::config::AppConfig;
 use crate::routes::yjs::{new_rooms, Rooms};
+use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db:    PgPool,
     pub rooms: Rooms,
+    // JWT
+    pub enc_key: EncodingKey,
+    pub dec_key: DecodingKey,
 }
 
 impl AppState {
@@ -16,6 +20,6 @@ impl AppState {
             .connect(&cfg.database_url)
             .await?;
 
-        Ok(Self { db, rooms: new_rooms() })
+        Ok(Self { db, rooms: new_rooms(), enc_key: EncodingKey::from_secret(cfg.jwt_secret.as_bytes()), dec_key: DecodingKey::from_secret(cfg.jwt_secret.as_bytes()) })
     }
 }
