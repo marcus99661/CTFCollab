@@ -1,5 +1,6 @@
 import type { RxDatabase } from "rxdb";
 import type { AppCollections } from "../db";
+import { getToken } from "../auth";
 
 type Checkpoint = { id: string; updatedAt: number } | null;
 
@@ -57,7 +58,7 @@ export function createAutoSync(config: SyncConfig) {
 
             const res = await fetch(`${baseUrl}${config.pushPath}`, {
                 method: "POST",
-                headers: { "content-type": "application/json" },
+                headers: { "content-type": "application/json", "Authorization": `Bearer ${getToken()}` },
                 body: JSON.stringify({ rows })
             });
 
@@ -81,7 +82,7 @@ export function createAutoSync(config: SyncConfig) {
         async function pull() {
             const res = await fetch(`${baseUrl}${config.pullPath}`, {
                 method: "POST",
-                headers: { "content-type": "application/json" },
+                headers: { "content-type": "application/json", "Authorization": `Bearer ${getToken()}` },
                 body: JSON.stringify({ checkpoint: cp, limit: 200 })
             });
 
