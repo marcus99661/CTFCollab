@@ -37,6 +37,9 @@ export default function LoginPage() {
             }
 
             setToken(json.token);
+            const colors = ["#958DF1", "#F98181", "#FBBC88", "#70CFF8", "#94FADB", "#B9F18D"];
+            const color = colors[json.username.charCodeAt(0) % colors.length];
+            localStorage.setItem("collab_user", JSON.stringify({ name: json.username, color }));
             navigate("/");
         } catch {
             setError("Could not reach server");

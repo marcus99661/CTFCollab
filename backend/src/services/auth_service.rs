@@ -23,6 +23,7 @@ pub struct RegisterRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub token: String,
+    pub username: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,14 +36,15 @@ pub struct AuthService;
 
 impl AuthService {
 
-    fn create_token(user: String, enc_key: &EncodingKey) -> AuthResponse {
+    fn create_token(id: String, user: String, enc_key: &EncodingKey) -> AuthResponse {
         let claims = Claims {
-            sub: user,
+            sub: id,
             exp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 7 * 24 * 60 * 60
         };
 
         AuthResponse {
             token: jsonwebtoken::encode(&Header::default(), &claims, &enc_key).unwrap(),
+            username: user,
         }
     }
 
@@ -64,7 +66,7 @@ impl AuthService {
             return Err("Invalid password".to_string())
         }
 
-        Ok(Self::create_token(user.id, enc_key))
+        Ok(Self::create_token(user.id, req.username, enc_key))
     }
 
     pub async fn register(db: &PgPool, enc_key: &EncodingKey, req: RegisterRequest) -> Result<AuthResponse, String> {
@@ -98,6 +100,6 @@ impl AuthService {
             .await
             .map_err(|e| e.to_string())?;
 
-        Ok(Self::create_token(id, enc_key))
+        Ok(Self::create_token(id, req.username, enc_key))
     }
 }
