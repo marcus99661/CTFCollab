@@ -1,0 +1,210 @@
+/* ── Design tokens ── */
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --danger: #f85149;
+  --success: #3fb950;
+  --warning: #d29922;
+}
+
+/* ── Layout ── */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+/* ── Inputs ── */
+.input {
+  padding: 7px 10px;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus {
+  border-color: var(--accent);
+}
+.input::placeholder {
+  color: var(--muted);
+}
+
+.select {
+  padding: 7px 10px;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.select:focus {
+  border-color: var(--accent);
+}
+.select option {
+  background: var(--surface);
+}
+
+/* ── Buttons ── */
+.btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--surface);
+  border-color: var(--muted);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0d1117;
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background: #79b8ff;
+  border-color: #79b8ff;
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: transparent;
+  background: transparent;
+}
+.btn-danger:hover {
+  background: rgba(248, 81, 73, 0.12);
+  border-color: var(--danger);
+}
+
+/* ── Form row ── */
+.form-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  color: var(--text);
+}
+.table tbody tr:hover {
+  background: rgba(88, 166, 255, 0.04);
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Misc ── */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 16px 0;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.status-bar .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+.status-bar .dot.ok { background: var(--success); }
+.status-bar .dot.syncing { background: var(--warning); }
+.status-bar .dot.err { background: var(--danger); }
+
+/* ── Points badge ── */
+.points-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  background: rgba(88, 166, 255, 0.12);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Accent link ── */
+a.accent-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+}
+a.accent-link:hover {
+  text-decoration: underline;
+}
