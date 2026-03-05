@@ -3,12 +3,27 @@ import { getDb, type NoteDoc } from "../db";
 import { startNotesAutoSync } from "../sync/notesSync";
 import { makeId } from "../utils";
 import NoteEditor from "../components/NoteEditor";
+import "../styles/ui.css";
+
+function relativeTime(ms: number) {
+    const diff = Date.now() - ms;
+    if (diff < 60_000) return "just now";
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+function statusDotClass(status: string) {
+    if (status === "Ready" || status.includes("synced")) return "ok";
+    if (status.includes("Sync") || status.includes("Loading")) return "syncing";
+    if (status.includes("fail") || status.includes("error")) return "err";
+    return "";
+}
 
 export default function NotesPage() {
     const [status, setStatus] = useState("Loading…");
     const [notes, setNotes] = useState<NoteDoc[]>([]);
     const [selectedId, setSelectedId] = useState<string>("");
-
     const [newTitle, setNewTitle] = useState("");
 
     const selected = useMemo(
@@ -55,11 +70,9 @@ export default function NotesPage() {
 
     async function createNote() {
         const title = newTitle.trim() || "Untitled note";
-
         try {
             const db = await getDb();
             const id = makeId();
-
             await db.notes.insert({
                 id,
                 title,
@@ -67,7 +80,6 @@ export default function NotesPage() {
                 updatedAt: Date.now(),
                 isDeleted: false,
             });
-
             setSelectedId(id);
             setNewTitle("");
         } catch (e) {
@@ -79,12 +91,10 @@ export default function NotesPage() {
     async function deleteSelected() {
         if (!selected) return;
         if (!confirm(`Delete "${selected.title}"?`)) return;
-
         try {
             const db = await getDb();
             const doc = await db.notes.findOne(selected.id).exec();
             if (!doc) return;
-
             await doc.patch({ isDeleted: true, updatedAt: Date.now() });
             setSelectedId("");
         } catch (e) {
@@ -99,7 +109,6 @@ export default function NotesPage() {
             const db = await getDb();
             const doc = await db.notes.findOne(selected.id).exec();
             if (!doc) return;
-
             await doc.patch({ title: next, updatedAt: Date.now() });
         } catch (e) {
             console.error("updateTitle failed:", e);
@@ -108,52 +117,97 @@ export default function NotesPage() {
     }
 
     return (
-        <div style={{ maxWidth: 980, margin: "32px auto", padding: 16 }}>
-            <h1>Notes PoC</h1>
-            <div style={{ marginBottom: 12, opacity: 0.8 }}>Status: {status}</div>
+        <div style={{ display: "flex", height: "calc(100vh - 52px - 41px)" }}>
+            {/* Sidebar */}
+            <aside style={{
+                width: 240,
+                flexShrink: 0,
+                borderRight: "1px solid var(--border)",
+                display: "flex",
+                flexDirection: "column",
+                background: "var(--surface)",
+            }}>
+                <div style={{ padding: "12px 12px 8px", borderBottom: "1px solid var(--border)" }}>
+                    <div className="status-bar">
+                        <span className={`dot ${statusDotClass(status)}`} />
+                        <span>{status}</span>
+                    </div>
+                </div>
 
-            <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                <select
-                    value={selectedId}
-                    onChange={(e) => setSelectedId(e.target.value)}
-                    style={{ padding: 8, minWidth: 260 }}
-                >
-                    {notes.map((n) => (
-                        <option key={n.id} value={n.id}>
-                            {n.title}
-                        </option>
-                    ))}
-                </select>
+                {/* Note list */}
+                <div style={{ flex: 1, overflowY: "auto" }}>
+                    {notes.length === 0 ? (
+                        <div className="empty-state" style={{ padding: "32px 12px" }}>No notes yet</div>
+                    ) : (
+                        notes.map((n) => (
+                            <div
+                                key={n.id}
+                                onClick={() => setSelectedId(n.id)}
+                                style={{
+                                    padding: "10px 12px",
+                                    cursor: "pointer",
+                                    borderBottom: "1px solid rgba(48,54,61,0.5)",
+                                    background: n.id === selectedId ? "rgba(88,166,255,0.08)" : "transparent",
+                                    borderLeft: n.id === selectedId ? "2px solid var(--accent)" : "2px solid transparent",
+                                    transition: "background 0.1s",
+                                }}
+                                onMouseEnter={e => {
+                                    if (n.id !== selectedId)
+                                        (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                                }}
+                                onMouseLeave={e => {
+                                    if (n.id !== selectedId)
+                                        (e.currentTarget as HTMLElement).style.background = "transparent";
+                                }}
+                            >
+                                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {n.title}
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--muted)" }}>{relativeTime(n.updatedAt)}</div>
+                            </div>
+                        ))
+                    )}
+                </div>
 
-                <input
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="New note title…"
-                    style={{ padding: 8, minWidth: 220 }}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") createNote();
-                    }}
-                />
-
-                <button onClick={createNote}>Create</button>
-                <button onClick={deleteSelected} disabled={!selected}>
-                    Delete
-                </button>
-            </div>
-
-            {!selected ? (
-                <div style={{ opacity: 0.7 }}>No note selected.</div>
-            ) : (
-                <>
+                {/* New note input */}
+                <div style={{ padding: 10, borderTop: "1px solid var(--border)", display: "flex", gap: 6 }}>
                     <input
-                        value={selected.title}
-                        onChange={(e) => updateTitle(e.target.value)}
-                        style={{ width: "100%", padding: 10, fontSize: 16, marginBottom: 10 }}
+                        className="input"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        placeholder="New note…"
+                        style={{ flex: 1, minWidth: 0 }}
+                        onKeyDown={(e) => { if (e.key === "Enter") createNote(); }}
                     />
+                    <button className="btn btn-primary" onClick={createNote} style={{ padding: "7px 10px" }}>+</button>
+                </div>
+            </aside>
 
-                    <NoteEditor key={selected.id} noteId={selected.id} />
-                </>
-            )}
+            {/* Editor area */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                {!selected ? (
+                    <div className="empty-state" style={{ margin: "auto" }}>
+                        Select a note or create one
+                    </div>
+                ) : (
+                    <>
+                        {/* Title bar */}
+                        <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                                className="input"
+                                value={selected.title}
+                                onChange={(e) => updateTitle(e.target.value)}
+                                style={{ flex: 1, fontSize: 16, fontWeight: 600 }}
+                            />
+                            <button className="btn btn-danger" onClick={deleteSelected}>Delete</button>
+                        </div>
+                        {/* Editor */}
+                        <div style={{ flex: 1, overflow: "auto", padding: "16px 20px" }}>
+                            <NoteEditor key={selected.id} noteId={selected.id} />
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { makeId } from "../utils";
+import "../styles/ui.css";
 
 export default function ChallengesPage() {
     const [status, setStatus] = useState("Loading…");
@@ -69,7 +70,6 @@ export default function ChallengesPage() {
     async function createChallenge() {
         const title = newTitle.trim();
         if (!title) return;
-
         try {
             const db = await getDb();
             await db.challenges.insert({
@@ -110,94 +110,126 @@ export default function ChallengesPage() {
     }
 
     return (
-        <div style={{ maxWidth: 980, margin: "32px auto", padding: 16 }}>
-            <h1>Challenges</h1>
-            <div style={{ marginBottom: 12, opacity: 0.8 }}>Status: {status}</div>
+        <div style={{ maxWidth: 1100, margin: "32px auto", padding: "0 16px" }}>
+            <h2 className="page-title">Challenges</h2>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-                <input
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Title (required)"
-                    style={{ padding: 8, minWidth: 200 }}
-                />
-                <input
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    placeholder="Category"
-                    style={{ padding: 8, minWidth: 120 }}
-                />
-                <input
-                    type="number"
-                    value={newPoints}
-                    onChange={(e) => setNewPoints(e.target.value)}
-                    placeholder="Points"
-                    style={{ padding: 8, minWidth: 80 }}
-                />
-                <input
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="URL"
-                    style={{ padding: 8, minWidth: 200 }}
-                />
-                <select
-                    value={newEventId}
-                    onChange={(e) => setNewEventId(e.target.value)}
-                    style={{ padding: 8 }}
-                >
-                    <option value="">— No event —</option>
-                    {events.map((ev) => (
-                        <option key={ev.id} value={ev.id}>{ev.name}</option>
-                    ))}
-                </select>
-                <button onClick={createChallenge} disabled={!newTitle.trim()}>Add Challenge</button>
+            <div className="card" style={{ marginBottom: 20 }}>
+                <div className="form-row" style={{ marginBottom: 8 }}>
+                    <input
+                        className="input"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        placeholder="Title (required)"
+                        style={{ flex: "2 1 180px" }}
+                    />
+                    <input
+                        className="input"
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                        placeholder="Category"
+                        style={{ flex: "1 1 110px" }}
+                    />
+                    <input
+                        className="input"
+                        type="number"
+                        value={newPoints}
+                        onChange={(e) => setNewPoints(e.target.value)}
+                        placeholder="Points"
+                        style={{ flex: "0 1 80px" }}
+                    />
+                </div>
+                <div className="form-row">
+                    <input
+                        className="input"
+                        value={newUrl}
+                        onChange={(e) => setNewUrl(e.target.value)}
+                        placeholder="URL"
+                        style={{ flex: "3 1 200px" }}
+                    />
+                    <select
+                        className="select"
+                        value={newEventId}
+                        onChange={(e) => setNewEventId(e.target.value)}
+                        style={{ flex: "1 1 140px" }}
+                    >
+                        <option value="">— No event —</option>
+                        {events.map((ev) => (
+                            <option key={ev.id} value={ev.id}>{ev.name}</option>
+                        ))}
+                    </select>
+                    <button className="btn btn-primary" onClick={createChallenge} disabled={!newTitle.trim()}>
+                        Add Challenge
+                    </button>
+                </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-                <label style={{ marginRight: 8 }}>Filter by event:</label>
-                <select
-                    value={filterEventId}
-                    onChange={(e) => setFilterEventId(e.target.value)}
-                    style={{ padding: 6 }}
-                >
-                    <option value="">All Events</option>
-                    {events.map((ev) => (
-                        <option key={ev.id} value={ev.id}>{ev.name}</option>
-                    ))}
-                </select>
+            {/* Filter + status row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+                <div className="status-bar">
+                    <span className="dot" />
+                    <span>{status}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+                    <span style={{ fontSize: 12, color: "var(--muted)" }}>Filter:</span>
+                    <select
+                        className="select"
+                        value={filterEventId}
+                        onChange={(e) => setFilterEventId(e.target.value)}
+                        style={{ fontSize: 12 }}
+                    >
+                        <option value="">All Events</option>
+                        {events.map((ev) => (
+                            <option key={ev.id} value={ev.id}>{ev.name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {displayedChallenges.length === 0 ? (
-                <div style={{ opacity: 0.7 }}>No challenges yet.</div>
+                <div className="empty-state">No challenges yet. Create one above.</div>
             ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                        <tr>
-                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #ccc" }}>Title</th>
-                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #ccc" }}>Category</th>
-                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #ccc" }}>Points</th>
-                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #ccc" }}>URL</th>
-                            <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #ccc" }}>Event</th>
-                            <th style={{ padding: 8, borderBottom: "1px solid #ccc" }}></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {displayedChallenges.map((ch) => (
-                            <tr key={ch.id}>
-                                <td style={{ padding: 8 }}>{ch.title}</td>
-                                <td style={{ padding: 8 }}>{ch.category}</td>
-                                <td style={{ padding: 8 }}>{ch.points}</td>
-                                <td style={{ padding: 8 }}>
-                                    {ch.url ? <a href={ch.url} target="_blank" rel="noopener noreferrer">{ch.url}</a> : "—"}
-                                </td>
-                                <td style={{ padding: 8 }}>{ch.eventId ? eventName(ch.eventId) : "—"}</td>
-                                <td style={{ padding: 8 }}>
-                                    <button onClick={() => deleteChallenge(ch.id)}>Delete</button>
-                                </td>
+                <div className="card" style={{ padding: 0 }}>
+                    <table className="table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Points</th>
+                                <th>URL</th>
+                                <th>Event</th>
+                                <th></th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {displayedChallenges.map((ch) => (
+                                <tr key={ch.id}>
+                                    <td style={{ fontWeight: 500 }}>{ch.title}</td>
+                                    <td style={{ color: "var(--muted)" }}>{ch.category || "—"}</td>
+                                    <td>
+                                        {ch.points ? (
+                                            <span className="points-badge">{ch.points}</span>
+                                        ) : "—"}
+                                    </td>
+                                    <td>
+                                        {ch.url ? (
+                                            <a className="accent-link" href={ch.url} target="_blank" rel="noopener noreferrer">
+                                                {ch.url.replace(/^https?:\/\//, "")}
+                                            </a>
+                                        ) : "—"}
+                                    </td>
+                                    <td style={{ color: "var(--muted)" }}>
+                                        {ch.eventId ? eventName(ch.eventId) : "—"}
+                                    </td>
+                                    <td style={{ textAlign: "right" }}>
+                                        <button className="btn btn-danger" onClick={() => deleteChallenge(ch.id)}>
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );

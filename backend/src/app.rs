@@ -1,6 +1,8 @@
 use axum::body::Body;
 use axum::http::Response as HttpResponse;
-use axum::Router;
+use axum::routing::get;
+use axum::{Json, Router};
+use serde_json::{json, Value};
 use std::{fmt, time::Duration};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -8,6 +10,10 @@ use tracing::{Level, Span};
 
 use crate::routes::{auth, replication, yjs};
 use crate::state::AppState;
+
+async fn health() -> Json<Value> {
+    Json(json!({ "ok": true }))
+}
 
 pub fn build_app(state: AppState) -> Router {
     let trace = TraceLayer::new_for_http()
@@ -21,6 +27,7 @@ pub fn build_app(state: AppState) -> Router {
         });
 
     Router::new()
+        .route("/api/health", get(health))
         .nest("/auth", auth::router())
         .merge(replication::router())
         .merge(yjs::router())

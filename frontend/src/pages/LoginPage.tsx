@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setToken } from "../auth";
+import "../styles/ui.css";
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -48,99 +49,104 @@ export default function LoginPage() {
         }
     }
 
-    const inputStyle: React.CSSProperties = {
-        width: "100%",
-        padding: "8px 10px",
-        background: "#2a2a2a",
-        border: "1px solid #444",
-        borderRadius: 6,
-        color: "#fff",
-        fontSize: 14,
-        boxSizing: "border-box",
-    };
-
     return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#111" }}>
-            <div style={{ background: "#1a1a1a", padding: 32, borderRadius: 10, width: 340, display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ display: "flex", gap: 8 }}>
-                    {(["login", "register"] as const).map((m) => (
-                        <button
-                            key={m}
-                            onClick={() => { setMode(m); setError(null); }}
-                            style={{
-                                flex: 1,
-                                padding: "8px 0",
-                                background: mode === m ? "#333" : "transparent",
-                                border: "1px solid #444",
-                                borderRadius: 6,
-                                color: mode === m ? "#fff" : "#aaa",
-                                cursor: "pointer",
-                                fontWeight: mode === m ? 700 : 400,
-                                fontSize: 14,
-                            }}
-                        >
-                            {m === "login" ? "Login" : "Register"}
-                        </button>
-                    ))}
+        <div style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            background: "var(--bg)",
+        }}>
+            <div style={{ width: 340 }}>
+                {/* Logo */}
+                <div style={{ textAlign: "center", marginBottom: 28 }}>
+                    <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 24, letterSpacing: "-0.02em" }}>
+                        ◈ baka
+                    </span>
+                    <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>CTF collaboration tool</div>
                 </div>
 
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <input
-                        style={inputStyle}
-                        placeholder="Username"
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
-                        required
-                    />
-                    {mode === "register" && (
+                <div className="card" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {/* Tab switcher */}
+                    <div style={{ display: "flex", gap: 6 }}>
+                        {(["login", "register"] as const).map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => { setMode(m); setError(null); }}
+                                style={{
+                                    flex: 1,
+                                    padding: "7px 0",
+                                    background: mode === m ? "rgba(88,166,255,0.12)" : "transparent",
+                                    border: `1px solid ${mode === m ? "var(--accent)" : "var(--border)"}`,
+                                    borderRadius: 6,
+                                    color: mode === m ? "var(--accent)" : "var(--muted)",
+                                    cursor: "pointer",
+                                    fontWeight: mode === m ? 600 : 400,
+                                    fontSize: 13,
+                                    fontFamily: "inherit",
+                                    transition: "all 0.15s",
+                                }}
+                            >
+                                {m === "login" ? "Login" : "Register"}
+                            </button>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         <input
-                            style={inputStyle}
-                            placeholder="Email"
-                            type="email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
+                            className="input"
+                            style={{ width: "100%", boxSizing: "border-box" }}
+                            placeholder="Username"
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
                             required
                         />
-                    )}
-                    <input
-                        style={inputStyle}
-                        placeholder="Password"
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                    />
-                    {mode === "register" && (
+                        {mode === "register" && (
+                            <input
+                                className="input"
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                                placeholder="Email"
+                                type="email"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                required
+                            />
+                        )}
                         <input
-                            style={inputStyle}
-                            placeholder="Confirm password"
+                            className="input"
+                            style={{ width: "100%", boxSizing: "border-box" }}
+                            placeholder="Password"
                             type="password"
-                            value={confirmPassword}
-                            onChange={e => setConfirmPassword(e.target.value)}
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
                             required
                         />
-                    )}
+                        {mode === "register" && (
+                            <input
+                                className="input"
+                                style={{ width: "100%", boxSizing: "border-box" }}
+                                placeholder="Confirm password"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={e => setConfirmPassword(e.target.value)}
+                                required
+                            />
+                        )}
 
-                    {error && <p style={{ color: "#f66", margin: 0, fontSize: 13 }}>{error}</p>}
+                        {error && (
+                            <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>
+                        )}
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                            padding: "9px 0",
-                            background: "#4a7fff",
-                            border: "none",
-                            borderRadius: 6,
-                            color: "#fff",
-                            fontWeight: 700,
-                            fontSize: 14,
-                            cursor: loading ? "not-allowed" : "pointer",
-                            opacity: loading ? 0.7 : 1,
-                        }}
-                    >
-                        {loading ? "..." : mode === "login" ? "Login" : "Register"}
-                    </button>
-                </form>
+                        <button
+                            className="btn btn-primary"
+                            type="submit"
+                            disabled={loading}
+                            style={{ width: "100%", padding: "9px 0", marginTop: 4 }}
+                        >
+                            {loading ? "…" : mode === "login" ? "Login" : "Register"}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );
