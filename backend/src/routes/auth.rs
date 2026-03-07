@@ -12,15 +12,15 @@ impl FromRequestParts<AppState> for AuthUser {
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
-        let auth_header = parts
-            .headers
-            .get("Authorization")
-            .and_then(|v| v.to_str().ok())
-            .ok_or(AppError::Unauthorized)?;
-
-        let token = auth_header
-            .strip_prefix("Bearer ")
-            .ok_or(AppError::Unauthorized)?;
+        let token = if let Some(auth_header) = parts.headers.get("Authorization").and_then(|v| v.to_str().ok()) {
+            auth_header.strip_prefix("Bearer ").ok_or(AppError::Unauthorized)?
+        } else {
+            // Fallback for WebSocket connections which can't set headers
+            parts.uri.query()
+                .and_then(|q| q.split('&').find(|p| p.starts_with("token=")))
+                .and_then(|p| p.strip_prefix("token="))
+                .ok_or(AppError::Unauthorized)?
+        };
 
         let token_data = decode::<Claims>(token, &state.dec_key, &Validation::new(Algorithm::HS256))
             .map_err(|_| AppError::Unauthorized)?;

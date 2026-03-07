@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getToken } from "../auth";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -172,7 +173,7 @@ export default function NoteEditor({ noteId }: Props) {
     // locally stored content.
     const [ydoc] = useState(() => new Y.Doc());
     const [wsProvider] = useState(
-        () => new WebsocketProvider(getWsBaseUrl(), noteId, ydoc, { connect: false })
+        () => new WebsocketProvider(getWsBaseUrl(), `${noteId}?token=${getToken()}`, ydoc, { connect: false })
     );
 
     useEffect(() => {
