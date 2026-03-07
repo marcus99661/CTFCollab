@@ -17,7 +17,7 @@ use tokio::sync::{broadcast, mpsc};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 use yrs::updates::encoder::Encode;
 use yrs::updates::decoder::Decode;
-
+use crate::routes::auth::AuthUser;
 use crate::state::AppState;
 
 pub struct YjsRoom {
@@ -164,6 +164,7 @@ async fn save_loop(
 }
 
 pub async fn ws_handler(
+    auth: AuthUser,
     ws: WebSocketUpgrade,
     Path(note_id): Path<String>,
     State(state): State<AppState>,

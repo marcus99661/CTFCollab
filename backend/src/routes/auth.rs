@@ -1,10 +1,38 @@
-use axum::{routing::post, Json, Router, extract::State};
+use axum::{routing::post, Json, Router, extract::{State, FromRequestParts}, http::request::Parts};
+use jsonwebtoken::{decode, Validation, Algorithm};
 use crate::error::AppError;
-use crate::services::auth_service::{AuthService, LoginRequest, RegisterRequest, AuthResponse};
+use crate::services::auth_service::{AuthService, LoginRequest, RegisterRequest, AuthResponse, Claims};
 use crate::state::AppState;
 
+pub struct AuthUser {
+    pub user_id: String,
+}
+
+impl FromRequestParts<AppState> for AuthUser {
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+        let auth_header = parts
+            .headers
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok())
+            .ok_or(AppError::Unauthorized)?;
+
+        let token = auth_header
+            .strip_prefix("Bearer ")
+            .ok_or(AppError::Unauthorized)?;
+
+        let token_data = decode::<Claims>(token, &state.dec_key, &Validation::new(Algorithm::HS256))
+            .map_err(|_| AppError::Unauthorized)?;
+
+        Ok(AuthUser { user_id: token_data.claims.sub })
+    }
+}
+
 pub fn router() -> Router<AppState> {
-    Router::new().route("/login", post(login)).route("/register", post(register))
+    Router::new()
+        .route("/login", post(login))
+        .route("/register", post(register))
 }
 
 async fn login(State(state): State<AppState>, Json(payload): Json<LoginRequest>) -> Result<Json<AuthResponse>, AppError> {

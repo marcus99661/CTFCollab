@@ -2,6 +2,7 @@ use axum::{extract::State, routing::post, Json, Router};
 
 use crate::error::AppError;
 use crate::models::EventDoc;
+use crate::routes::auth::AuthUser;
 use crate::state::AppState;
 use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
 
@@ -12,6 +13,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn pull(
+    auth: AuthUser,
     State(state): State<AppState>,
     Json(req): Json<PullRequest>,
 ) -> Result<Json<PullResponse<EventDoc>>, AppError> {
@@ -65,6 +67,7 @@ async fn pull(
 }
 
 async fn push(
+    auth: AuthUser,
     State(state): State<AppState>,
     Json(req): Json<PushRequest<EventDoc>>,
 ) -> Result<Json<PushResponse<EventDoc>>, AppError> {

@@ -26,6 +26,7 @@ pub fn build_app(state: AppState) -> Router {
             );
         });
 
+    // All routes -> to handlers
     Router::new()
         .route("/api/health", get(health))
         .nest("/auth", auth::router())
