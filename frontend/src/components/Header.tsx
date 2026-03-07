@@ -6,6 +6,7 @@ const navLinks = [
     { to: "/", label: "Notes" },
     { to: "/events", label: "Events" },
     { to: "/challenges", label: "Challenges" },
+    { to: "/users", label: "Users" },
 ];
 
 const statusConfig: Record<ServerStatus, { color: string; bg: string; label: string; title: string }> = {

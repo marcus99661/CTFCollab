@@ -8,7 +8,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{Level, Span};
 
-use crate::routes::{auth, replication, yjs};
+use crate::routes::{auth, replication, yjs, admin};
 use crate::state::AppState;
 
 async fn health() -> Json<Value> {
