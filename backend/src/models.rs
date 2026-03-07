@@ -14,7 +14,6 @@ pub struct Users {
 pub struct NoteDoc {
     pub id: String,
     pub title: String,
-    pub content: String,
     pub updated_at: i64,
     pub is_deleted: bool,
 }

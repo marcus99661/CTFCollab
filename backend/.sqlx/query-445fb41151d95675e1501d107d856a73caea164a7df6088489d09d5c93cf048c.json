@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT id, title, content, updated_at, is_deleted\n                FROM notes\n                ORDER BY updated_at ASC, id ASC\n                LIMIT $1\n                ",
+  "query": "\n                SELECT id, title, updated_at, is_deleted\n                FROM notes\n                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)\n                ORDER BY updated_at ASC, id ASC\n                LIMIT $3\n                ",
   "describe": {
     "columns": [
       {
@@ -27,17 +27,6 @@
       },
       {
         "ordinal": 2,
-        "name": "content",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "notes",
-            "name": "content"
-          }
-        }
-      },
-      {
-        "ordinal": 3,
         "name": "updated_at",
         "type_info": "Int8",
         "origin": {
@@ -48,7 +37,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "is_deleted",
         "type_info": "Bool",
         "origin": {
@@ -61,6 +50,8 @@
     ],
     "parameters": {
       "Left": [
+        "Int8",
+        "Text",
         "Int8"
       ]
     },
@@ -68,9 +59,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "3c9f5bba12582351399776c1457e9197e2dc3f106233203090d4ca608ab44d06"
+  "hash": "445fb41151d95675e1501d107d856a73caea164a7df6088489d09d5c93cf048c"
 }

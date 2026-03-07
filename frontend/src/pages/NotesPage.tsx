@@ -76,7 +76,6 @@ export default function NotesPage() {
             await db.notes.insert({
                 id,
                 title,
-                content: "",
                 updatedAt: Date.now(),
                 isDeleted: false,
             });

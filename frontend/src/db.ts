@@ -1,11 +1,13 @@
-import { createRxDatabase } from "rxdb";
+import { createRxDatabase, addRxPlugin } from "rxdb";
 import type { RxDatabase } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
+import { RxDBMigrationSchemaPlugin } from "rxdb/plugins/migration-schema";
+
+addRxPlugin(RxDBMigrationSchemaPlugin);
 
 export type NoteDoc = {
     id: string;
     title: string;
-    content: string;
     updatedAt: number;
     isDeleted: boolean;
 };
@@ -33,17 +35,16 @@ export type ChallengeDoc = {
 
 const noteSchema = {
     title: "note schema",
-    version: 0,
+    version: 1,
     primaryKey: "id",
     type: "object",
     properties: {
         id: { type: "string", maxLength: 128 },
         title: { type: "string" },
-        content: { type: "string" },
         updatedAt: { type: "number" },
         isDeleted: { type: "boolean" }
     },
-    required: ["id", "title", "content", "updatedAt", "isDeleted"]
+    required: ["id", "title", "updatedAt", "isDeleted"]
 } as const;
 
 const eventSchema = {
@@ -98,7 +99,12 @@ export async function getDb() {
             });
 
             await db.addCollections({
-                notes: { schema: noteSchema },
+                notes: {
+                    schema: noteSchema,
+                    migrationStrategies: {
+                        1: (oldDoc) => { delete oldDoc.content; return oldDoc; }
+                    }
+                },
                 events: { schema: eventSchema },
                 challenges: { schema: challengeSchema }
             });

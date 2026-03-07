@@ -24,7 +24,7 @@ async fn pull(
             sqlx::query_as!(
                 NoteDoc,
                 r#"
-                SELECT id, title, content, updated_at, is_deleted
+                SELECT id, title, updated_at, is_deleted
                 FROM notes
                 ORDER BY updated_at ASC, id ASC
                 LIMIT $1
@@ -39,7 +39,7 @@ async fn pull(
             sqlx::query_as!(
                 NoteDoc,
                 r#"
-                SELECT id, title, content, updated_at, is_deleted
+                SELECT id, title, updated_at, is_deleted
                 FROM notes
                 WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
                 ORDER BY updated_at ASC, id ASC
@@ -86,18 +86,17 @@ async fn push(
         let applied: Option<NoteDoc> = sqlx::query_as!(
             NoteDoc,
             r#"
-            INSERT INTO notes (id, title, content, updated_at, is_deleted)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO notes (id, title, updated_at, is_deleted)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (id) DO UPDATE
             SET title      = EXCLUDED.title,
                 updated_at = EXCLUDED.updated_at,
                 is_deleted = EXCLUDED.is_deleted
             WHERE EXCLUDED.updated_at >= notes.updated_at
-            RETURNING id, title, content, updated_at, is_deleted
+            RETURNING id, title, updated_at, is_deleted
             "#,
             incoming.id,
             incoming.title,
-            incoming.content,
             incoming.updated_at,
             incoming.is_deleted
         )
@@ -109,7 +108,7 @@ async fn push(
             let server_doc: Option<NoteDoc> = sqlx::query_as!(
                 NoteDoc,
                 r#"
-                SELECT id, title, content, updated_at, is_deleted
+                SELECT id, title, updated_at, is_deleted
                 FROM notes
                 WHERE id = $1
                 "#,

@@ -166,11 +166,6 @@ interface Props {
 // Parent must use key={noteId} so this component is fully remounted on note switch.
 export default function NoteEditor({ noteId }: Props) {
     const [connStatus, setConnStatus] = useState("connecting");
-
-    // Created synchronously so they are ready before useEditor runs.
-    // WebsocketProvider starts disconnected — we connect only after IndexedDB
-    // has finished loading the local state, so the server never races ahead of
-    // locally stored content.
     const [ydoc] = useState(() => new Y.Doc());
     const [wsProvider] = useState(
         () => new WebsocketProvider(getWsBaseUrl(), `${noteId}?token=${getToken()}`, ydoc, { connect: false })
@@ -180,9 +175,7 @@ export default function NoteEditor({ noteId }: Props) {
         const idb = new IndexeddbPersistence(`note-${noteId}`, ydoc);
         const onStatus = ({ status }: { status: string }) => setConnStatus(status);
         wsProvider.on("status", onStatus);
-
-        // Connect to the server only after local state is fully restored
-        idb.once("synced", () => wsProvider.connect());
+        wsProvider.connect();
 
         return () => {
             wsProvider.off("status", onStatus);
