@@ -1,0 +1,138 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id\n                FROM challenges\n                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)\n                ORDER BY updated_at ASC, id ASC\n                LIMIT $3\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "event_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "event_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "category",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "points",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "points"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_deleted",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "is_deleted"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "note_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "note_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "54f236e249755db699e38aaf0f3ba56ef5ff745a39a59855e97a17f86b3ff2a0"
+}

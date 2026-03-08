@@ -1,0 +1,145 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ON CONFLICT (id) DO UPDATE\n            SET event_id   = EXCLUDED.event_id,\n                title      = EXCLUDED.title,\n                category   = EXCLUDED.category,\n                points     = EXCLUDED.points,\n                url        = EXCLUDED.url,\n                created_at = EXCLUDED.created_at,\n                updated_at = EXCLUDED.updated_at,\n                is_deleted = EXCLUDED.is_deleted,\n                note_id    = EXCLUDED.note_id\n            WHERE EXCLUDED.updated_at >= challenges.updated_at\n            RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "event_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "event_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "category",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "points",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "points"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_deleted",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "is_deleted"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "note_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "challenges",
+            "name": "note_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Int8",
+        "Int8",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "da6ee7286f1ba948a9db8f4cb42a030adfd6917368024a5c95bcc32f0dc62838"
+}
