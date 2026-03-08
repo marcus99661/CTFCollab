@@ -33,7 +33,6 @@ function getWsBaseUrl(): string {
     return `${proto}//${window.location.host}/api/yjs`;
 }
 
-// ── Toolbar ────────────────────────────────────────────────────────────────
 
 interface TBtnProps {
     onClick: () => void;
@@ -157,7 +156,6 @@ function Toolbar({ editor }: { editor: Editor }) {
     );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
 
 interface Props {
     noteId: string;

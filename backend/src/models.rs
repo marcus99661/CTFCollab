@@ -7,6 +7,7 @@ pub struct Users {
     pub name: String,
     pub email: String,
     pub password_hash: String,
+    // Enum user type
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -35,10 +36,11 @@ pub struct ChallengeDoc {
     pub id: String,
     pub event_id: String,
     pub title: String,
-    pub category: String,
+    pub category: String, // Enum
     pub points: i32,
     pub url: String,
     pub created_at: i64,
-    pub updated_at: i64,
+   pub updated_at: i64,
     pub is_deleted: bool,
+    pub note_id: Option<String>,
 }

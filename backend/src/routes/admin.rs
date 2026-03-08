@@ -24,7 +24,6 @@ async fn users(auth: AuthUser, State(state): State<AppState>) -> Result<Json<Vec
         .map_err(|e| e.to_string());
 
     Ok(Json(user.unwrap()))
-    // Return the list of users here
 }
 
 async fn delete_user(auth: AuthUser, State(state): State<AppState>, Path(id): Path<String>) -> Result<(), AppError> {

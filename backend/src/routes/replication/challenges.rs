@@ -24,7 +24,7 @@ async fn pull(
             sqlx::query_as!(
                 ChallengeDoc,
                 r#"
-                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted
+                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id
                 FROM challenges
                 ORDER BY updated_at ASC, id ASC
                 LIMIT $1
@@ -39,7 +39,7 @@ async fn pull(
             sqlx::query_as!(
                 ChallengeDoc,
                 r#"
-                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted
+                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id
                 FROM challenges
                 WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
                 ORDER BY updated_at ASC, id ASC
@@ -79,8 +79,8 @@ async fn push(
         let applied: Option<ChallengeDoc> = sqlx::query_as!(
             ChallengeDoc,
             r#"
-            INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (id) DO UPDATE
             SET event_id   = EXCLUDED.event_id,
                 title      = EXCLUDED.title,
@@ -89,9 +89,10 @@ async fn push(
                 url        = EXCLUDED.url,
                 created_at = EXCLUDED.created_at,
                 updated_at = EXCLUDED.updated_at,
-                is_deleted = EXCLUDED.is_deleted
+                is_deleted = EXCLUDED.is_deleted,
+                note_id    = EXCLUDED.note_id
             WHERE EXCLUDED.updated_at >= challenges.updated_at
-            RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted
+            RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id
             "#,
             incoming.id,
             incoming.event_id,
@@ -101,7 +102,8 @@ async fn push(
             incoming.url,
             incoming.created_at,
             incoming.updated_at,
-            incoming.is_deleted
+            incoming.is_deleted,
+            incoming.note_id
         )
         .fetch_optional(&state.db)
         .await
@@ -111,7 +113,7 @@ async fn push(
             let server_doc: Option<ChallengeDoc> = sqlx::query_as!(
                 ChallengeDoc,
                 r#"
-                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted
+                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id
                 FROM challenges
                 WHERE id = $1
                 "#,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
+import { startNotesAutoSync } from "../sync/notesSync";
 import { makeId } from "../utils";
 import "../styles/ui.css";
 
@@ -31,6 +32,8 @@ export default function ChallengesPage() {
                 pollMs: 4000,
                 onStatus: setStatus,
             });
+
+            startNotesAutoSync({ db, baseUrl: "" });
 
             challengeSub = db.challenges.find().$.subscribe((docs: any[]) => {
                 const list: ChallengeDoc[] = (docs ?? [])
@@ -72,6 +75,15 @@ export default function ChallengesPage() {
         if (!title) return;
         try {
             const db = await getDb();
+            const noteId = makeId();
+
+            await db.notes.insert({
+                id: noteId,
+                title,
+                updatedAt: Date.now(),
+                isDeleted: false,
+            });
+
             await db.challenges.insert({
                 id: makeId(),
                 eventId: newEventId,
@@ -82,7 +94,9 @@ export default function ChallengesPage() {
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 isDeleted: false,
+                noteId,
             });
+
             setNewTitle("");
             setNewCategory("");
             setNewPoints("");

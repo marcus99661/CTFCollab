@@ -31,6 +31,7 @@ export type ChallengeDoc = {
     createdAt: number;
     updatedAt: number;
     isDeleted: boolean;
+    noteId: string | null;
 };
 
 const noteSchema = {
@@ -77,7 +78,8 @@ const challengeSchema = {
         url: { type: "string" },
         createdAt: { type: "number" },
         updatedAt: { type: "number" },
-        isDeleted: { type: "boolean" }
+        isDeleted: { type: "boolean" },
+        noteId: { type: ["string", "null"] }
     },
     required: ["id", "eventId", "title", "category", "points", "url", "createdAt", "updatedAt", "isDeleted"]
 } as const;
