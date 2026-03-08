@@ -11,8 +11,8 @@ use crate::routes::auth::AuthUser;
 pub fn router() -> Router<AppState> {
     Router::new()
         //.route("/admin", post(login))
-        .route("/api/admin/users", get(users))
-        .route("/api/admin/users/{id}", delete(delete_user))
+        .route("/admin/users", get(users))
+        .route("/admin/users/{id}", delete(delete_user))
 }
 
 async fn users(auth: AuthUser, State(state): State<AppState>) -> Result<Json<Vec<Users>>, AppError> {

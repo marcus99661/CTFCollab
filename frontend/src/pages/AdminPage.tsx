@@ -13,7 +13,7 @@ export default function AdminPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch("/admin/users", {
+        fetch("/api/admin/users", {
             headers: { Authorization: `Bearer ${getToken()}` },
         })
             .then((r) => r.json())
@@ -24,7 +24,7 @@ export default function AdminPage() {
     async function deleteUser(id: string, name: string) {
         if (!confirm(`Delete user "${name}"?`)) return;
 
-        const res = await fetch(`/admin/users/${id}`, {
+        const res = await fetch(`/api/admin/users/${id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${getToken()}` },
         });

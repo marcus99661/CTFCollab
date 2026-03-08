@@ -27,11 +27,15 @@ pub fn build_app(state: AppState) -> Router {
         });
 
     // All routes -> to handlers
-    Router::new()
-        .route("/api/health", get(health))
+    let api = Router::new()
+        .route("/health", get(health))
         .nest("/auth", auth::router())
         .merge(replication::router())
         .merge(yjs::router())
+        .merge(admin::router());
+
+    Router::new()
+        .nest("/api", api)
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(trace)

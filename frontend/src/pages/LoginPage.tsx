@@ -19,7 +19,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const url = mode === "login" ? "/auth/login" : "/auth/register";
+            const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
             const body = mode === "login"
                 ? { username, password }
                 : { username, email, password, confirmPassword };
