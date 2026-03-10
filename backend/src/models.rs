@@ -28,6 +28,8 @@ pub struct EventDoc {
     pub created_at: i64,
     pub updated_at: i64,
     pub is_deleted: bool,
+    pub start_at: Option<i64>,
+    pub end_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

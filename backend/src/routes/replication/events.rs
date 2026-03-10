@@ -24,7 +24,7 @@ async fn pull(
             sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT id, name, description, created_at, updated_at, is_deleted
+                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at
                 FROM events
                 ORDER BY updated_at ASC, id ASC
                 LIMIT $1
@@ -39,7 +39,7 @@ async fn pull(
             sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT id, name, description, created_at, updated_at, is_deleted
+                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at
                 FROM events
                 WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
                 ORDER BY updated_at ASC, id ASC
@@ -79,23 +79,27 @@ async fn push(
         let applied: Option<EventDoc> = sqlx::query_as!(
             EventDoc,
             r#"
-            INSERT INTO events (id, name, description, created_at, updated_at, is_deleted)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO events (id, name, description, created_at, updated_at, is_deleted, start_at, end_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (id) DO UPDATE
             SET name        = EXCLUDED.name,
                 description = EXCLUDED.description,
                 created_at  = EXCLUDED.created_at,
                 updated_at  = EXCLUDED.updated_at,
-                is_deleted  = EXCLUDED.is_deleted
+                is_deleted  = EXCLUDED.is_deleted,
+                start_at    = EXCLUDED.start_at,
+                end_at      = EXCLUDED.end_at
             WHERE EXCLUDED.updated_at >= events.updated_at
-            RETURNING id, name, description, created_at, updated_at, is_deleted
+            RETURNING id, name, description, created_at, updated_at, is_deleted, start_at, end_at
             "#,
             incoming.id,
             incoming.name,
             incoming.description,
             incoming.created_at,
             incoming.updated_at,
-            incoming.is_deleted
+            incoming.is_deleted,
+            incoming.start_at,
+            incoming.end_at
         )
         .fetch_optional(&state.db)
         .await
@@ -105,7 +109,7 @@ async fn push(
             let server_doc: Option<EventDoc> = sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT id, name, description, created_at, updated_at, is_deleted
+                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at
                 FROM events
                 WHERE id = $1
                 "#,

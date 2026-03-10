@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT id, name, description, created_at, updated_at, is_deleted\n                FROM events\n                ORDER BY updated_at ASC, id ASC\n                LIMIT $1\n                ",
+  "query": "\n                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at\n                FROM events\n                WHERE id = $1\n                ",
   "describe": {
     "columns": [
       {
@@ -68,11 +68,33 @@
             "name": "is_deleted"
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "start_at",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "start_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "end_at",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "end_at"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -81,8 +103,10 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "911eb0b7aa2fed66f8241eac66fc4c0da811dbd558a0288e9ebfa73d5d7dbf3b"
+  "hash": "5986ed25864711bf9b1e18b4ef4391003b1b87ca24301b8cd31e39dabb2fe1d3"
 }
