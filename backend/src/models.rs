@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "event_role", rename_all = "lowercase")]
+pub enum EventRole {
+    Owner,
+    Member,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct Users {
@@ -8,6 +15,15 @@ pub struct Users {
     pub email: String,
     pub password_hash: String,
     // Enum user type
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct EventMembers {
+    pub event_id: String,
+    pub user_id: String,
+    pub role: EventRole,
+    pub joined_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

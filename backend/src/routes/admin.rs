@@ -1,7 +1,6 @@
 use axum::{routing::post, Json, Router, extract::{State, FromRequestParts}, http::request::Parts};
 use axum::extract::Path;
 use axum::routing::{delete, get};
-use sqlx::PgPool;
 
 use crate::error::AppError;
 use crate::models::Users;

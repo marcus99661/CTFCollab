@@ -24,12 +24,14 @@ async fn pull(
             sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at
-                FROM events
-                ORDER BY updated_at ASC, id ASC
+                SELECT e.id, e.name, e.description, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at
+                FROM events e
+                JOIN event_members em ON em.event_id = e.id AND em.user_id = $2
+                ORDER BY e.updated_at ASC, e.id ASC
                 LIMIT $1
                 "#,
-                limit
+                limit,
+                auth.user_id,
             )
             .fetch_all(&state.db)
             .await
@@ -39,15 +41,17 @@ async fn pull(
             sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at
-                FROM events
-                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
-                ORDER BY updated_at ASC, id ASC
-                LIMIT $3
+                SELECT e.id, e.name, e.description, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at
+                FROM events e
+                JOIN event_members em ON em.event_id = e.id AND em.user_id = $3
+                WHERE (e.updated_at > $1) OR (e.updated_at = $1 AND e.id > $2)
+                ORDER BY e.updated_at ASC, e.id ASC
+                LIMIT $4
                 "#,
                 cp.updated_at,
                 cp.id,
-                limit
+                auth.user_id,
+                limit,
             )
             .fetch_all(&state.db)
             .await
