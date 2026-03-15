@@ -71,15 +71,45 @@ async fn pull(
 }
 
 async fn push(
-    auth: AuthUser,
-    State(state): State<AppState>,
-    Json(req): Json<PushRequest<EventDoc>>,
+    auth: AuthUser, // Logged in user object
+    State(state): State<AppState>, // Shared app state - database connection, JWT secret
+    Json(req): Json<PushRequest<EventDoc>>, // Request body in JSON format
 ) -> Result<Json<PushResponse<EventDoc>>, AppError> {
     let mut conflicts = Vec::new();
 
+    // User can push multiple events
     for row in req.rows {
-        let incoming = row.new_document_state;
+        let mut incoming = row.new_document_state; // singular event object that user sent
 
+        let now = chrono::Utc::now().timestamp_millis();
+        incoming.updated_at = incoming.updated_at.min(now);
+
+        // Check if EventDoc already exists
+        let exists = sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM events WHERE id = $1)")
+            .bind(&incoming.id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if exists {
+            // Event already exists — check the user is a member
+            let member = sqlx::query_scalar::<_, String>(
+                "SELECT role::TEXT FROM event_members WHERE event_id = $1 AND user_id = $2"
+            )
+            .bind(&incoming.id)
+            .bind(&auth.user_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            match member {
+                None => return Err(AppError::Forbidden),
+                Some(role) if incoming.is_deleted && role != "owner" => return Err(AppError::Forbidden),
+                _ => {}
+            }
+        }
+
+        // Gets Some(EventDoc) if success, None if the server had a newer version
         let applied: Option<EventDoc> = sqlx::query_as!(
             EventDoc,
             r#"
@@ -109,6 +139,22 @@ async fn push(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
+        // New event was successfully inserted — make the creator the owner
+        if !exists {
+            if let Some(ref doc) = applied {
+                sqlx::query!(
+                    "INSERT INTO event_members (event_id, user_id, role, joined_at) VALUES ($1, $2, 'owner', $3)",
+                    doc.id,
+                    auth.user_id,
+                    now,
+                )
+                .execute(&state.db)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            }
+        }
+
+        // If nothing was saved — server had a newer version, return it as a conflict
         if applied.is_none() {
             let server_doc: Option<EventDoc> = sqlx::query_as!(
                 EventDoc,

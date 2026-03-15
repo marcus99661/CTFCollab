@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT id, name, description, created_at, updated_at, is_deleted, start_at, end_at\n                FROM events\n                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)\n                ORDER BY updated_at ASC, id ASC\n                LIMIT $3\n                ",
+  "query": "\n                SELECT e.id, e.name, e.description, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at\n                FROM events e\n                JOIN event_members em ON em.event_id = e.id AND em.user_id = $2\n                ORDER BY e.updated_at ASC, e.id ASC\n                LIMIT $1\n                ",
   "describe": {
     "columns": [
       {
@@ -95,8 +95,7 @@
     "parameters": {
       "Left": [
         "Int8",
-        "Text",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -110,5 +109,5 @@
       true
     ]
   },
-  "hash": "a62b4cc6b0ae1bc7990fc41b6cc36d517e3313444f31853cbe89349a19881322"
+  "hash": "363134d0e0e389375c33e617126dc8f4a8e16a8b14b9139aaadc01a6da040c6b"
 }
