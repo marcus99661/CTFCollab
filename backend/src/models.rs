@@ -41,6 +41,7 @@ pub struct EventDoc {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub created_by: String,
     pub created_at: i64,
     pub updated_at: i64,
     pub is_deleted: bool,

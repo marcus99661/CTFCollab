@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS events (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
-    created_by TEXT REFERENCES users(id),
+    created_by TEXT NOT NULL REFERENCES users(id),
     start_at BIGINT,
     end_at BIGINT,
     created_at BIGINT NOT NULL,

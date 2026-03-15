@@ -2,6 +2,7 @@ use axum::{extract::State, routing::post, Json, Router};
 
 use crate::error::AppError;
 use crate::models::ChallengeDoc;
+use crate::models::EventRole;
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
 use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
@@ -24,12 +25,14 @@ async fn pull(
             sqlx::query_as!(
                 ChallengeDoc,
                 r#"
-                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id
-                FROM challenges
-                ORDER BY updated_at ASC, id ASC
+                SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id
+                FROM challenges c
+                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
+                ORDER BY c.updated_at ASC, c.id ASC
                 LIMIT $1
                 "#,
-                limit
+                limit,
+                auth.user_id,
             )
             .fetch_all(&state.db)
             .await
@@ -39,15 +42,17 @@ async fn pull(
             sqlx::query_as!(
                 ChallengeDoc,
                 r#"
-                SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id
-                FROM challenges
-                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
-                ORDER BY updated_at ASC, id ASC
-                LIMIT $3
+                SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id
+                FROM challenges c
+                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $3
+                WHERE (c.updated_at > $1) OR (c.updated_at = $1 AND c.id > $2)
+                ORDER BY c.updated_at ASC, c.id ASC
+                LIMIT $4
                 "#,
                 cp.updated_at,
                 cp.id,
-                limit
+                auth.user_id,
+                limit,
             )
             .fetch_all(&state.db)
             .await
@@ -74,7 +79,26 @@ async fn push(
     let mut conflicts = Vec::new();
 
     for row in req.rows {
-        let incoming = row.new_document_state;
+        let mut incoming = row.new_document_state;
+
+        let now = chrono::Utc::now().timestamp_millis();
+        incoming.updated_at = incoming.updated_at.min(now);
+
+        // Check the user is a member of the event this challenge belongs to
+        let role = sqlx::query_scalar::<_, EventRole>(
+            "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
+        )
+        .bind(&incoming.event_id)
+        .bind(&auth.user_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        match role {
+            None => return Err(AppError::Forbidden),
+            Some(r) if incoming.is_deleted && r != EventRole::Owner => return Err(AppError::Forbidden),
+            _ => {}
+        }
 
         let applied: Option<ChallengeDoc> = sqlx::query_as!(
             ChallengeDoc,
