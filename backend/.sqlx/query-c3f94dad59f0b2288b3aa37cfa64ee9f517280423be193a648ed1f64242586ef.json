@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT e.id, e.name, e.description, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at\n                FROM events e\n                JOIN event_members em ON em.event_id = e.id AND em.user_id = $2\n                ORDER BY e.updated_at ASC, e.id ASC\n                LIMIT $1\n                ",
+  "query": "\n                SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at\n                FROM events\n                WHERE id = $1\n                ",
   "describe": {
     "columns": [
       {
@@ -38,6 +38,17 @@
       },
       {
         "ordinal": 3,
+        "name": "created_by",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Int8",
         "origin": {
@@ -48,7 +59,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "updated_at",
         "type_info": "Int8",
         "origin": {
@@ -59,7 +70,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "is_deleted",
         "type_info": "Bool",
         "origin": {
@@ -70,7 +81,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "start_at",
         "type_info": "Int8",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "end_at",
         "type_info": "Int8",
         "origin": {
@@ -94,7 +105,6 @@
     ],
     "parameters": {
       "Left": [
-        "Int8",
         "Text"
       ]
     },
@@ -105,9 +115,10 @@
       false,
       false,
       false,
+      false,
       true,
       true
     ]
   },
-  "hash": "363134d0e0e389375c33e617126dc8f4a8e16a8b14b9139aaadc01a6da040c6b"
+  "hash": "c3f94dad59f0b2288b3aa37cfa64ee9f517280423be193a648ed1f64242586ef"
 }
