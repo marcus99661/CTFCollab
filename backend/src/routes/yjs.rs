@@ -116,7 +116,7 @@ async fn get_or_create_room(note_id: &str, rooms: &Rooms, db: &PgPool) -> Arc<Yj
 
     let room = Arc::new(YjsRoom { doc: doc.clone(), bcast: bcast_tx, save_tx });
 
-    // recheck after acquiring lock — another task may have inserted while we were loading
+    // recheck after acquiring lock - another task may have inserted while we were loading
     let mut g = rooms.lock().unwrap();
     if let Some(existing) = g.get(note_id) {
         return Arc::clone(existing);
@@ -168,8 +168,26 @@ pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(note_id): Path<String>,
     State(state): State<AppState>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_ws(socket, note_id, state))
+) -> Result<impl IntoResponse, crate::error::AppError> {
+    // Notes have no event_id - look up membership through the challenge that owns this note
+    let is_member = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM challenges c
+            JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
+            WHERE c.note_id = $1
+        )"
+    )
+    .bind(&note_id)
+    .bind(&auth.user_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+
+    if !is_member {
+        return Err(crate::error::AppError::Forbidden);
+    }
+
+    Ok(ws.on_upgrade(move |socket| handle_ws(socket, note_id, state)))
 }
 
 async fn handle_ws(socket: WebSocket, note_id: String, state: AppState) {

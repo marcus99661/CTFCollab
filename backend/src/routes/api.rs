@@ -2,6 +2,7 @@ use axum::{extract::{Path, State}, routing::{delete, get, post}, Json, Router};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
+use crate::models::EventRole;
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
 
@@ -16,7 +17,7 @@ pub fn router() -> Router<AppState> {
 struct MemberInfo {
     user_id: String,
     username: String,
-    role: String,
+    role: EventRole,
 }
 
 #[derive(Deserialize)]
@@ -43,8 +44,8 @@ async fn list_members(
         return Err(AppError::Forbidden);
     }
 
-    let members = sqlx::query_as::<_, (String, String, String)>(
-        "SELECT em.user_id, u.name, em.role::TEXT
+    let members = sqlx::query_as::<_, (String, String, EventRole)>(
+        "SELECT em.user_id, u.name, em.role
          FROM event_members em
          JOIN users u ON u.id = em.user_id
          WHERE em.event_id = $1
@@ -71,8 +72,8 @@ async fn invite_user(
     Json(body): Json<InviteBody>,
 ) -> Result<Json<MemberInfo>, AppError> {
     // Only owners can invite
-    let role = sqlx::query_scalar::<_, String>(
-        "SELECT role::TEXT FROM event_members WHERE event_id = $1 AND user_id = $2"
+    let role = sqlx::query_scalar::<_, EventRole>(
+        "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
     )
     .bind(&event_id)
     .bind(&auth.user_id)
@@ -80,11 +81,11 @@ async fn invite_user(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    if role.as_deref() != Some("owner") {
+    if role != Some(EventRole::Owner) {
         return Err(AppError::Forbidden);
     }
 
-    // Look up the user by username
+    // Look up the user being invited by username
     let user = sqlx::query_as::<_, (String, String)>(
         "SELECT id, name FROM users WHERE name = $1"
     )
@@ -94,13 +95,23 @@ async fn invite_user(
     .map_err(|e| AppError::Internal(e.to_string()))?
     .ok_or(AppError::BadRequest("User not found".into()))?;
 
+    let already_member = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM event_members WHERE event_id = $1 AND user_id = $2)"
+    )
+    .bind(&event_id)
+    .bind(&user.0)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if already_member {
+        return Err(AppError::BadRequest("User is already a member".into()));
+    }
+
     let now = chrono::Utc::now().timestamp_millis();
 
-    // Insert — ignore if already a member
     sqlx::query(
-        "INSERT INTO event_members (event_id, user_id, role, joined_at)
-         VALUES ($1, $2, 'member', $3)
-         ON CONFLICT (event_id, user_id) DO NOTHING"
+        "INSERT INTO event_members (event_id, user_id, role, joined_at) VALUES ($1, $2, 'member', $3)"
     )
     .bind(&event_id)
     .bind(&user.0)
@@ -112,7 +123,7 @@ async fn invite_user(
     Ok(Json(MemberInfo {
         user_id: user.0,
         username: user.1,
-        role: "member".into(),
+        role: EventRole::Member,
     }))
 }
 
@@ -122,8 +133,8 @@ async fn kick_user(
     Path((event_id, target_user_id)): Path<(String, String)>,
 ) -> Result<(), AppError> {
     // Only owners can kick
-    let role = sqlx::query_scalar::<_, String>(
-        "SELECT role::TEXT FROM event_members WHERE event_id = $1 AND user_id = $2"
+    let role = sqlx::query_scalar::<_, EventRole>(
+        "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
     )
     .bind(&event_id)
     .bind(&auth.user_id)
@@ -131,7 +142,7 @@ async fn kick_user(
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    if role.as_deref() != Some("owner") {
+    if role != Some(EventRole::Owner) {
         return Err(AppError::Forbidden);
     }
 

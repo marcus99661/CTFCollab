@@ -1,7 +1,7 @@
 use axum::{extract::State, routing::post, Json, Router};
 
 use crate::error::AppError;
-use crate::models::EventDoc;
+use crate::models::{EventDoc, EventRole};
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
 use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
@@ -92,9 +92,8 @@ async fn push(
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if exists {
-            // Event already exists — check the user is a member
-            let member = sqlx::query_scalar::<_, String>(
-                "SELECT role::TEXT FROM event_members WHERE event_id = $1 AND user_id = $2"
+            let member = sqlx::query_scalar::<_, EventRole>(
+                "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
             )
             .bind(&incoming.id)
             .bind(&auth.user_id)
@@ -104,7 +103,7 @@ async fn push(
 
             match member {
                 None => return Err(AppError::Forbidden),
-                Some(role) if incoming.is_deleted && role != "owner" => return Err(AppError::Forbidden),
+                Some(role) if incoming.is_deleted && role != EventRole::Owner => return Err(AppError::Forbidden),
                 _ => {}
             }
         }
@@ -139,7 +138,7 @@ async fn push(
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        // New event was successfully inserted — make the creator the owner
+        // New event was successfully inserted - make the creator the owner
         if !exists {
             if let Some(ref doc) = applied {
                 sqlx::query!(
@@ -154,7 +153,7 @@ async fn push(
             }
         }
 
-        // If nothing was saved — server had a newer version, return it as a conflict
+        // If nothing was saved - server had a newer version, return it as a conflict
         if applied.is_none() {
             let server_doc: Option<EventDoc> = sqlx::query_as!(
                 EventDoc,
