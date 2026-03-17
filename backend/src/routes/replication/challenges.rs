@@ -22,48 +22,59 @@ async fn pull(
 
     let docs: Vec<ChallengeDoc> = match req.checkpoint.clone() {
         None => {
-            sqlx::query_as!(
-                ChallengeDoc,
-                r#"
-                SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id
-                FROM challenges c
-                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
-                ORDER BY c.updated_at ASC, c.id ASC
-                LIMIT $1
-                "#,
-                limit,
-                auth.user_id,
+            sqlx::query_as::<_, ChallengeDoc>(
+                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id
+                 FROM challenges c
+                 JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
+                 ORDER BY GREATEST(c.updated_at, em.joined_at) ASC, c.id ASC
+                 LIMIT $1"
             )
+            .bind(limit)
+            .bind(&auth.user_id)
             .fetch_all(&state.db)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
         }
         Some(cp) => {
-            sqlx::query_as!(
-                ChallengeDoc,
-                r#"
-                SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id
-                FROM challenges c
-                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $3
-                WHERE (c.updated_at > $1) OR (c.updated_at = $1 AND c.id > $2)
-                ORDER BY c.updated_at ASC, c.id ASC
-                LIMIT $4
-                "#,
-                cp.updated_at,
-                cp.id,
-                auth.user_id,
-                limit,
+            sqlx::query_as::<_, ChallengeDoc>(
+                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id
+                 FROM challenges c
+                 JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $3
+                 WHERE GREATEST(c.updated_at, em.joined_at) > $1
+                    OR (GREATEST(c.updated_at, em.joined_at) = $1 AND c.id > $2)
+                 ORDER BY GREATEST(c.updated_at, em.joined_at) ASC, c.id ASC
+                 LIMIT $4"
             )
+            .bind(cp.updated_at)
+            .bind(&cp.id)
+            .bind(&auth.user_id)
+            .bind(limit)
             .fetch_all(&state.db)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
         }
     };
 
-    let new_checkpoint = docs.last().map(|d| Checkpoint {
-        id: d.id.clone(),
-        updated_at: d.updated_at,
-    });
+    // Checkpoint is based on GREATEST(updated_at, joined_at) so that challenges from
+    // newly joined events are not skipped. This is required if user has join event that
+    // contains challenges that are older than user's checkpoint time
+    let new_checkpoint = if let Some(last) = docs.last() {
+        let effective_at = sqlx::query_scalar::<_, i64>(
+            "SELECT GREATEST(c.updated_at, em.joined_at)
+             FROM challenges c
+             JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
+             WHERE c.id = $1"
+        )
+        .bind(&last.id)
+        .bind(&auth.user_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Some(Checkpoint { id: last.id.clone(), updated_at: effective_at })
+    } else {
+        None
+    };
 
     Ok(Json(PullResponse {
         documents: docs,
