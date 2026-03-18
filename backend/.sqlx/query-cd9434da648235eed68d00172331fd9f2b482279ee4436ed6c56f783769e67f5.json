@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT id, title, updated_at, is_deleted\n                FROM notes\n                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)\n                ORDER BY updated_at ASC, id ASC\n                LIMIT $3\n                ",
+  "query": "\n                SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted\n                FROM notes n\n                JOIN challenges c ON c.note_id = n.id\n                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1\n                WHERE (n.updated_at > $2) OR (n.updated_at = $2 AND n.id > $3)\n                ORDER BY n.updated_at ASC, n.id ASC\n                LIMIT $4\n                ",
   "describe": {
     "columns": [
       {
@@ -50,6 +50,7 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Int8",
         "Text",
         "Int8"
@@ -62,5 +63,5 @@
       false
     ]
   },
-  "hash": "445fb41151d95675e1501d107d856a73caea164a7df6088489d09d5c93cf048c"
+  "hash": "cd9434da648235eed68d00172331fd9f2b482279ee4436ed6c56f783769e67f5"
 }

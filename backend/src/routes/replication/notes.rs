@@ -24,11 +24,14 @@ async fn pull(
             sqlx::query_as!(
                 NoteDoc,
                 r#"
-                SELECT id, title, updated_at, is_deleted
-                FROM notes
-                ORDER BY updated_at ASC, id ASC
-                LIMIT $1
+                SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted
+                FROM notes n
+                JOIN challenges c ON c.note_id = n.id
+                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
+                ORDER BY n.updated_at ASC, n.id ASC
+                LIMIT $2
                 "#,
+                auth.user_id,
                 limit
             )
             .fetch_all(&state.db)
@@ -39,12 +42,15 @@ async fn pull(
             sqlx::query_as!(
                 NoteDoc,
                 r#"
-                SELECT id, title, updated_at, is_deleted
-                FROM notes
-                WHERE (updated_at > $1) OR (updated_at = $1 AND id > $2)
-                ORDER BY updated_at ASC, id ASC
-                LIMIT $3
+                SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted
+                FROM notes n
+                JOIN challenges c ON c.note_id = n.id
+                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
+                WHERE (n.updated_at > $2) OR (n.updated_at = $2 AND n.id > $3)
+                ORDER BY n.updated_at ASC, n.id ASC
+                LIMIT $4
                 "#,
+                auth.user_id,
                 cp.updated_at,
                 cp.id,
                 limit
@@ -81,6 +87,30 @@ async fn push(
         }
         if incoming.title.is_empty() {
             return Err(AppError::BadRequest("title is required".into()));
+        }
+
+        // If the note is already linked to a challenge, the user must be a member of that event.
+        // If it's not linked yet (newly created), allow through.
+        let is_linked_but_not_member = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM challenges c
+                WHERE c.note_id = $1
+                AND NOT EXISTS(
+                    SELECT 1 FROM event_members em
+                    WHERE em.event_id = c.event_id AND em.user_id = $2
+                )
+            )
+            "#,
+        )
+        .bind(&incoming.id)
+        .bind(&auth.user_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if is_linked_but_not_member {
+            return Err(AppError::Forbidden);
         }
 
         let applied: Option<NoteDoc> = sqlx::query_as!(
