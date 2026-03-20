@@ -15,7 +15,6 @@ pub struct Users {
     pub name: String,
     pub email: String,
     pub password_hash: String,
-    // Enum user type
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -60,7 +59,17 @@ pub struct ChallengeDoc {
     pub points: i32,
     pub url: String,
     pub created_at: i64,
-   pub updated_at: i64,
+    pub updated_at: i64,
     pub is_deleted: bool,
     pub note_id: Option<String>,
 }
+
+/*
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ChallengeType {
+    pub id: String,
+    pub chal_type: String,
+    pub color: String,
+}
+ */

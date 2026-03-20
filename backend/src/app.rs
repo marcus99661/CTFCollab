@@ -8,7 +8,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{Level, Span};
 
-use crate::routes::{auth, replication, yjs, admin, api};
+use crate::routes::{auth, replication, yjs, admin, api, ctf_importer};
 use crate::state::AppState;
 
 async fn health() -> Json<Value> {
@@ -33,7 +33,8 @@ pub fn build_app(state: AppState) -> Router {
         .merge(replication::router())
         .merge(yjs::router())
         .merge(admin::router())
-        .merge(api::router());
+        .merge(api::router())
+        .merge(ctf_importer::router());
 
     Router::new()
         .nest("/api", api)
