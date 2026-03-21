@@ -1,18 +1,16 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { clearToken } from "../auth";
+import { clearToken, getCollabUser, clearCollabUser } from "../auth";
 import { useServerStatus, type ServerStatus } from "../hooks/useServerStatus";
 
 const navLinks = [
-    { to: "/", label: "Notes" },
+    { to: "/", label: "Dashboard" },
     { to: "/events", label: "Events" },
-    { to: "/challenges", label: "Challenges" },
-    { to: "/users", label: "Users" },
 ];
 
-const statusConfig: Record<ServerStatus, { color: string; bg: string; label: string; title: string }> = {
-    online:   { color: "#16a34a", bg: "rgba(22,163,74,0.15)",  label: "Connected",    title: "Server reachable" },
-    unstable: { color: "#d97706", bg: "rgba(217,119,6,0.15)",  label: "Unstable",     title: "Server not responding — changes saved locally" },
-    offline:  { color: "#dc2626", bg: "rgba(220,38,38,0.15)",  label: "Disconnected", title: "No network — serving from cache" },
+const statusConfig: Record<ServerStatus, { color: string; label: string; title: string }> = {
+    online: { color: "#16a34a", label: "Connected", title: "Server reachable" },
+    unstable: { color: "#d97706", label: "Unstable", title: "Server not responding - changes saved locally" },
+    offline: { color: "#dc2626", label: "Disconnected", title: "No network" },
 };
 
 export default function Header() {
@@ -21,37 +19,37 @@ export default function Header() {
     const serverStatus = useServerStatus();
     const sc = statusConfig[serverStatus];
 
-    const collabUser = (() => {
-        try {
-            return JSON.parse(localStorage.getItem("collab_user") ?? "null");
-        } catch {
-            return null;
-        }
-    })();
+    const collabUser = getCollabUser();
 
-    function logout() {
+    async function logout() {
+        const { getDb, resetDb } = await import("../db");
+        const db = await getDb();
+        await db.remove();
+        resetDb();
         clearToken();
-        localStorage.removeItem("collab_user");
+        clearCollabUser();
+        localStorage.removeItem("eventsCheckpoint");
+        localStorage.removeItem("challengesCheckpoint");
+        localStorage.removeItem("notesCheckpoint");
         navigate("/login");
     }
 
     return (
         <header style={{
             height: 52,
-            background: "var(--surface)",
-            borderBottom: "1px solid var(--border)",
+            background: "var(--navbar)",
+            borderBottom: "1px solid rgba(0,0,0,0.2)",
             display: "flex",
             alignItems: "center",
             padding: "0 24px",
             gap: 24,
             flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
         }}>
-            {/* Logo */}
-            <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 17, letterSpacing: "-0.02em", userSelect: "none" }}>
-                ◈ baka
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.02em", userSelect: "none" }}>
+                CTFCollab
             </span>
 
-            {/* Nav */}
             <nav style={{ display: "flex", gap: 4, flex: 1 }}>
                 {navLinks.map(({ to, label }) => {
                     const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
@@ -62,12 +60,11 @@ export default function Header() {
                             style={{
                                 padding: "5px 12px",
                                 borderRadius: 6,
-                                color: active ? "var(--accent)" : "var(--muted)",
+                                color: active ? "#fff" : "rgba(255,255,255,0.75)",
                                 fontWeight: active ? 600 : 400,
                                 fontSize: 14,
                                 textDecoration: "none",
-                                background: active ? "rgba(88, 166, 255, 0.1)" : "transparent",
-                                transition: "color 0.15s, background 0.15s",
+                                background: active ? "rgba(255,255,255,0.15)" : "transparent",
                             }}
                         >
                             {label}
@@ -76,76 +73,43 @@ export default function Header() {
                 })}
             </nav>
 
-            {/* Right side */}
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                {/* Server status */}
                 <span
                     title={sc.title}
                     style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "4px 12px",
-                        borderRadius: 20,
-                        background: sc.bg,
-                        border: `1px solid ${sc.color}44`,
-                        color: sc.color,
                         fontSize: 12,
-                        fontWeight: 600,
+                        color: sc.color,
                         cursor: "default",
                         userSelect: "none",
-                        transition: "background 0.3s, color 0.3s, border-color 0.3s",
-                        letterSpacing: "0.01em",
                     }}
                 >
-                    <span style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: sc.color,
-                        flexShrink: 0,
-                        boxShadow: `0 0 5px ${sc.color}`,
-                        transition: "background 0.3s",
-                    }} />
                     {sc.label}
                 </span>
 
-                {/* Divider */}
-                <span style={{ width: 1, height: 18, background: "var(--border)", flexShrink: 0 }} />
+                <span style={{ width: 1, height: 18, background: "rgba(255,255,255,0.25)", flexShrink: 0 }} />
 
-                {/* Username */}
                 {collabUser && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
                         <span style={{
                             width: 8, height: 8, borderRadius: "50%",
-                            background: collabUser.color ?? "var(--accent)",
+                            background: collabUser.color ?? "#fff",
                             flexShrink: 0,
                         }} />
                         {collabUser.name}
                     </span>
                 )}
 
-                {/* Logout */}
                 <button
                     onClick={logout}
                     style={{
-                        background: "transparent",
-                        border: "1px solid var(--border)",
-                        borderRadius: 6,
-                        color: "var(--muted)",
+                        background: "rgba(255,255,255,0.15)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        borderRadius: 4,
+                        color: "#fff",
                         padding: "4px 12px",
                         cursor: "pointer",
                         fontSize: 12,
                         fontFamily: "inherit",
-                        transition: "border-color 0.15s, color 0.15s",
-                    }}
-                    onMouseEnter={e => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--muted)";
-                        (e.currentTarget as HTMLButtonElement).style.color = "var(--text)";
-                    }}
-                    onMouseLeave={e => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
-                        (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
                     }}
                 >
                     Logout

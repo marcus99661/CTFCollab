@@ -1,9 +1,6 @@
-import { createRxDatabase, addRxPlugin } from "rxdb";
+import { createRxDatabase } from "rxdb";
 import type { RxDatabase } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
-import { RxDBMigrationSchemaPlugin } from "rxdb/plugins/migration-schema";
-
-addRxPlugin(RxDBMigrationSchemaPlugin);
 
 export type NoteDoc = {
     id: string;
@@ -16,9 +13,12 @@ export type EventDoc = {
     id: string;
     name: string;
     description: string;
+    createdBy: string;
     createdAt: number;
     updatedAt: number;
     isDeleted: boolean;
+    startAt: number | null;
+    endAt: number | null;
 };
 
 export type ChallengeDoc = {
@@ -36,7 +36,7 @@ export type ChallengeDoc = {
 
 const noteSchema = {
     title: "note schema",
-    version: 1,
+    version: 0,
     primaryKey: "id",
     type: "object",
     properties: {
@@ -57,11 +57,14 @@ const eventSchema = {
         id: { type: "string", maxLength: 128 },
         name: { type: "string" },
         description: { type: "string" },
+        createdBy: { type: "string" },
         createdAt: { type: "number" },
         updatedAt: { type: "number" },
-        isDeleted: { type: "boolean" }
+        isDeleted: { type: "boolean" },
+        startAt: { type: ["number", "null"] },
+        endAt: { type: ["number", "null"] }
     },
-    required: ["id", "name", "description", "createdAt", "updatedAt", "isDeleted"]
+    required: ["id", "name", "description", "createdBy", "createdAt", "updatedAt", "isDeleted"]
 } as const;
 
 const challengeSchema = {
@@ -92,6 +95,10 @@ export type AppCollections = {
 
 let dbPromise: Promise<RxDatabase<AppCollections>> | null = null;
 
+export function resetDb() {
+    dbPromise = null;
+}
+
 export async function getDb() {
     if (!dbPromise) {
         dbPromise = (async () => {
@@ -101,12 +108,7 @@ export async function getDb() {
             });
 
             await db.addCollections({
-                notes: {
-                    schema: noteSchema,
-                    migrationStrategies: {
-                        1: (oldDoc) => { delete oldDoc.content; return oldDoc; }
-                    }
-                },
+                notes: { schema: noteSchema },
                 events: { schema: eventSchema },
                 challenges: { schema: challengeSchema }
             });

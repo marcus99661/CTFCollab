@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getToken } from "../auth";
+import { getToken, getCollabUser, setCollabUser } from "../auth";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -15,16 +15,14 @@ const CURSOR_COLORS = [
 ];
 
 function getUserInfo(): { name: string; color: string } {
-    try {
-        const stored = localStorage.getItem("collab_user");
-        if (stored) return JSON.parse(stored);
-    } catch { /* ignore */ }
+    const stored = getCollabUser();
+    if (stored) return stored;
 
     const info = {
         name: `User ${Math.floor(Math.random() * 900) + 100}`,
         color: CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)],
     };
-    localStorage.setItem("collab_user", JSON.stringify(info));
+    setCollabUser(info.name, info.color);
     return info;
 }
 
@@ -66,7 +64,6 @@ function Divider() {
 function Toolbar({ editor }: { editor: Editor }) {
     return (
         <div className="note-toolbar">
-            {/* Undo / Redo */}
             <TBtn
                 onClick={() => editor.chain().focus().undo().run()}
                 disabled={!editor.can().undo()}
@@ -80,7 +77,6 @@ function Toolbar({ editor }: { editor: Editor }) {
 
             <Divider />
 
-            {/* Headings */}
             <TBtn
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
                 active={editor.isActive("heading", { level: 1 })}
@@ -99,7 +95,6 @@ function Toolbar({ editor }: { editor: Editor }) {
 
             <Divider />
 
-            {/* Inline marks */}
             <TBtn
                 onClick={() => editor.chain().focus().toggleBold().run()}
                 active={editor.isActive("bold")}
@@ -123,7 +118,6 @@ function Toolbar({ editor }: { editor: Editor }) {
 
             <Divider />
 
-            {/* Block types */}
             <TBtn
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
                 active={editor.isActive("bulletList")}
@@ -147,11 +141,10 @@ function Toolbar({ editor }: { editor: Editor }) {
 
             <Divider />
 
-            {/* Misc */}
             <TBtn
                 onClick={() => editor.chain().focus().setHorizontalRule().run()}
                 title="Horizontal rule"
-            >—</TBtn>
+            >---</TBtn>
         </div>
     );
 }
@@ -165,6 +158,7 @@ interface Props {
 export default function NoteEditor({ noteId }: Props) {
     const [connStatus, setConnStatus] = useState("connecting");
     const [ydoc] = useState(() => new Y.Doc());
+    (window as any).ydoc = ydoc; // DEBUG - ydoc.getXmlFragment("default").toString()
     const [wsProvider] = useState(
         () => new WebsocketProvider(getWsBaseUrl(), `${noteId}?token=${getToken()}`, ydoc, { connect: false })
     );

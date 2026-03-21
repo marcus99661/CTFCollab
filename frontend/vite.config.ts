@@ -21,6 +21,9 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       devOptions: { enabled: true }, // enables SW in dev
+      workbox: {
+        navigateFallbackDenylist: [/^\/api/],
+      },
       manifest: {
         name: "CTFCollab",
         short_name: "Koostöö",

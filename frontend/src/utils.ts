@@ -1,6 +1,8 @@
 export function makeId(): string {
-    return (
-        globalThis.crypto?.randomUUID?.() ??
-        `id_${Date.now()}_${Math.random().toString(16).slice(2)}`
-    );
+    return crypto.randomUUID();
+}
+
+export function formatDate(ts: number | null): string {
+    if (!ts) return "-";
+    return new Date(ts).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", hour12: false });
 }

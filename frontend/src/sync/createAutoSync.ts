@@ -2,6 +2,8 @@ import type { RxDatabase } from "rxdb";
 import type { AppCollections } from "../db";
 import { getToken } from "../auth";
 
+// Checkpoint that tracks what was pulled from server last time.
+// Used for incremental update from backend
 type Checkpoint = { id: string; updatedAt: number } | null;
 
 interface SyncConfig {
@@ -11,12 +13,13 @@ interface SyncConfig {
     collectionName: keyof AppCollections;
 }
 
+// Sync function for events, challenges, notes
 export function createAutoSync(config: SyncConfig) {
     return function startSync(opts: {
         db: RxDatabase<AppCollections>;
         baseUrl?: string;
-        debounceMs?: number;
-        pollMs?: number;
+        debounceMs?: number;  // how long to wait ms after a local change to push
+        pollMs?: number;      // how often to pull from backend
         onStatus?: (s: string) => void;
     }) {
         const baseUrl = opts.baseUrl ?? "";
@@ -44,7 +47,11 @@ export function createAutoSync(config: SyncConfig) {
         let syncing = false;
         let debounceTimer: number | null = null;
         let pollTimer: number | null = null;
+
+        // Flag set while writing server data to local DB. Prevents those same changes from being pushed to server
         let applyingRemote = false;
+
+        // Set of document IDs that have been locally changed and need to be pushed to the server
         const dirtyIds = new Set<string>();
 
         async function pushDirty() {
@@ -65,6 +72,8 @@ export function createAutoSync(config: SyncConfig) {
             if (!res.ok) throw new Error(`Push failed: ${res.status} ${res.statusText}`);
 
             const json = await res.json().catch(() => ({}));
+
+            // If the server returns newer data then overwrite
             if (Array.isArray(json.conflicts) && json.conflicts.length > 0) {
                 applyingRemote = true;
                 try {
@@ -113,10 +122,10 @@ export function createAutoSync(config: SyncConfig) {
                 onStatus("Offline (saved locally)");
                 return;
             }
-            if (syncing) return;
+            if (syncing) return; // don't run two syncs at the same time
 
             syncing = true;
-            onStatus(`Syncing… (${reason})`);
+            onStatus(`Syncing... (${reason})`);
             try {
                 await pushDirty();
                 await pull();
@@ -133,9 +142,10 @@ export function createAutoSync(config: SyncConfig) {
             debounceTimer = window.setTimeout(() => sync("debounce"), debounceMs);
         }
 
+        // Watch for local changes and mark those documents as dirty
         const sub = collection.$.subscribe((ev: any) => {
             if (stopped) return;
-            if (applyingRemote) return;
+            if (applyingRemote) return; // ignore changes we just got from the server
 
             const id = ev?.documentId;
             if (typeof id === "string") dirtyIds.add(id);
@@ -143,9 +153,11 @@ export function createAutoSync(config: SyncConfig) {
             scheduleDebounce();
         });
 
+        // Periodically pull from the server to catch changes made by other users
         pollTimer = window.setInterval(() => sync("poll"), pollMs);
         window.addEventListener("online", () => sync("online"));
 
+        // On startup, mark all existing local docs as dirty so they get pushed
         (async () => {
             const allDocs = await collection.find().exec();
             for (const doc of allDocs) {
@@ -154,6 +166,7 @@ export function createAutoSync(config: SyncConfig) {
             sync("startup");
         })();
 
+        // Returns a cleanup function
         return () => {
             stopped = true;
             sub.unsubscribe();

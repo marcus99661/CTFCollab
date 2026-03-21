@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDb, type EventDoc } from "../db";
 import { startEventsAutoSync } from "../sync/eventsSync";
-import { makeId } from "../utils";
+import { makeId, formatDate } from "../utils";
+import { getUserIdFromToken } from "../auth";
 import "../styles/ui.css";
 
 export default function EventsPage() {
-    const [status, setStatus] = useState("Loading…");
+    const [status, setStatus] = useState("Loading...");
     const [events, setEvents] = useState<EventDoc[]>([]);
     const [newName, setNewName] = useState("");
     const [newDesc, setNewDesc] = useState("");
+    const [newStartAt, setNewStartAt] = useState("");
+    const [newEndAt, setNewEndAt] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
         let stopSync: null | (() => void) = null;
         let sub: any = null;
 
-        (async () => {
+        async function init() {
             const db = await getDb();
 
             stopSync = startEventsAutoSync({
@@ -26,8 +31,8 @@ export default function EventsPage() {
             });
 
             sub = db.events.find().$.subscribe((docs: any[]) => {
-                const list: EventDoc[] = (docs ?? [])
-                    .map((d: any) => (d?.toJSON ? d.toJSON() : d))
+                const list: EventDoc[] = docs
+                    .map((d: any) => d.toJSON())
                     .filter((d: EventDoc) => !d.isDeleted)
                     .sort((a: EventDoc, b: EventDoc) => b.updatedAt - a.updatedAt);
 
@@ -35,7 +40,8 @@ export default function EventsPage() {
             });
 
             setStatus("Ready");
-        })().catch((e) => {
+        }
+        init().catch((e) => {
             console.error("EventsPage init failed:", e);
             setStatus("Init failed (check console)");
         });
@@ -55,12 +61,17 @@ export default function EventsPage() {
                 id: makeId(),
                 name,
                 description: newDesc.trim(),
+                createdBy: getUserIdFromToken() ?? "",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 isDeleted: false,
+                startAt: newStartAt ? new Date(newStartAt).getTime() : null,
+                endAt: newEndAt ? new Date(newEndAt).getTime() : null,
             });
             setNewName("");
             setNewDesc("");
+            setNewStartAt("");
+            setNewEndAt("");
         } catch (e) {
             console.error("createEvent failed:", e);
             setStatus("Create event failed (check console)");
@@ -84,13 +95,13 @@ export default function EventsPage() {
             <h2 className="page-title">Events</h2>
 
             <div className="card" style={{ marginBottom: 20 }}>
-                <div className="form-row">
+                <div className="form-row" style={{ marginBottom: 8 }}>
                     <input
                         className="input"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="Event name (required)"
-                        style={{ minWidth: 200, flex: "1 1 200px" }}
+                        style={{ flex: "1 1 200px" }}
                         onKeyDown={(e) => { if (e.key === "Enter") createEvent(); }}
                     />
                     <input
@@ -98,10 +109,30 @@ export default function EventsPage() {
                         value={newDesc}
                         onChange={(e) => setNewDesc(e.target.value)}
                         placeholder="Description"
-                        style={{ minWidth: 260, flex: "2 1 260px" }}
+                        style={{ flex: "2 1 260px" }}
                         onKeyDown={(e) => { if (e.key === "Enter") createEvent(); }}
                     />
-                    <button className="btn btn-primary" onClick={createEvent} disabled={!newName.trim()}>
+                </div>
+                <div className="form-row">
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px" }}>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>Start</span>
+                        <input
+                            className="input"
+                            type="datetime-local"
+                            value={newStartAt}
+                            onChange={(e) => setNewStartAt(e.target.value)}
+                        />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px" }}>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>End</span>
+                        <input
+                            className="input"
+                            type="datetime-local"
+                            value={newEndAt}
+                            onChange={(e) => setNewEndAt(e.target.value)}
+                        />
+                    </label>
+                    <button className="btn btn-primary" onClick={createEvent} disabled={!newName.trim()} style={{ alignSelf: "flex-end" }}>
                         Add Event
                     </button>
                 </div>
@@ -123,22 +154,28 @@ export default function EventsPage() {
                             <tr>
                                 <th>Name</th>
                                 <th>Description</th>
-                                <th>Updated</th>
+                                <th>Start</th>
+                                <th>End</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             {events.map((ev) => (
-                                <tr key={ev.id}>
+                                <tr
+                                    key={ev.id}
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => navigate(`/events/${ev.id}`)}
+                                >
                                     <td style={{ fontWeight: 500 }}>{ev.name}</td>
-                                    <td style={{ color: "var(--muted)" }}>{ev.description || "—"}</td>
-                                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
-                                        {new Date(ev.updatedAt).toLocaleString()}
-                                    </td>
-                                    <td style={{ textAlign: "right" }}>
-                                        <button className="btn btn-danger" onClick={() => deleteEvent(ev.id)}>
-                                            Delete
-                                        </button>
+                                    <td style={{ color: "var(--muted)" }}>{ev.description || "-"}</td>
+                                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{formatDate(ev.startAt)}</td>
+                                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{formatDate(ev.endAt)}</td>
+                                    <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                                        {ev.createdBy === getUserIdFromToken() && (
+                                            <button className="btn btn-danger" onClick={() => deleteEvent(ev.id)}>
+                                                Delete
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

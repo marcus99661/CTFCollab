@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import NotesPage from "./pages/NotesPage";
+import DashboardPage from "./pages/DashboardPage";
 import EventsPage from "./pages/EventsPage";
-import ChallengesPage from "./pages/ChallengesPage";
-import AdminPage from "./pages/AdminPage";
+import EventDetailPage from "./pages/EventDetailPage";
+import ChallengeDetailPage from "./pages/ChallengeDetailPage";
 import LoginPage from "./pages/LoginPage";
 import PageShell from "./components/PageShell";
 import { getToken } from "./auth";
@@ -22,10 +22,10 @@ export default function App() {
                     <ProtectedRoute>
                         <PageShell>
                             <Routes>
-                                <Route path="/" element={<NotesPage />} />
+                                <Route path="/" element={<DashboardPage />} />
                                 <Route path="/events" element={<EventsPage />} />
-                                <Route path="/challenges" element={<ChallengesPage />} />
-                                <Route path="/users" element={<AdminPage />} />
+                                <Route path="/events/:id" element={<EventDetailPage />} />
+                                <Route path="/challenges/:id" element={<ChallengeDetailPage />} />
                             </Routes>
                         </PageShell>
                     </ProtectedRoute>
