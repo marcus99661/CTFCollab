@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+// Raw environment variables 
 pub struct AppConfig {
     pub addr: SocketAddr,
     pub database_url: String,
@@ -9,7 +10,7 @@ pub struct AppConfig {
 impl AppConfig {
     pub fn from_env() -> Self {
         let raw = std::env::var("APP_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
-        let jwt_secret = std::env::var("APP_SECRET").unwrap_or_else(|_| "SUPERSecretJWT".to_string());
+        let jwt_secret = std::env::var("APP_SECRET").unwrap_or_else(|_| "SUPERSecretJWT".to_string()); // TODO some better idea with hard-coded key
         let addr = raw
             .parse()
             .unwrap_or_else(|_| "127.0.0.1:3000".parse().unwrap());

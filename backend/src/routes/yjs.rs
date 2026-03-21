@@ -21,8 +21,8 @@ use crate::routes::auth::AuthUser;
 use crate::state::AppState;
 
 pub struct YjsRoom {
-    doc:     Doc,
-    bcast:   broadcast::Sender<Bytes>,
+    doc: Doc,
+    bcast: broadcast::Sender<Bytes>,
     save_tx: mpsc::UnboundedSender<()>,
 }
 

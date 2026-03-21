@@ -4,13 +4,15 @@ use crate::config::AppConfig;
 use crate::routes::yjs::{new_rooms, Rooms};
 use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
 
+// Shared variables used during runtime
 #[derive(Clone)]
 pub struct AppState {
-    pub db:    PgPool,
+    pub db: PgPool,
     pub rooms: Rooms,
     // JWT
     pub enc_key: EncodingKey,
     pub dec_key: DecodingKey,
+
 }
 
 impl AppState {

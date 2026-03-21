@@ -1,4 +1,4 @@
-use jsonwebtoken::{EncodingKey, Header};
+use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use bcrypt;
@@ -22,28 +22,32 @@ pub struct RegisterRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
-    pub token: String,
+    pub token: String, // JWT token
     pub username: String,
 }
 
+// Body of the JWT
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,
+    pub sub: String, // user id
     pub exp: usize,
 }
+
+const JWT_EXPIRY_SECS: usize = 7 * 24 * 60 * 60; // 7 days
 
 pub struct AuthService;
 
 impl AuthService {
 
     fn create_token(id: String, user: String, enc_key: &EncodingKey) -> AuthResponse {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize;
         let claims = Claims {
             sub: id,
-            exp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 7 * 24 * 60 * 60
+            exp: now + JWT_EXPIRY_SECS,
         };
 
         AuthResponse {
-            token: jsonwebtoken::encode(&Header::default(), &claims, &enc_key).unwrap(),
+            token: jsonwebtoken::encode(&Header::new(Algorithm::HS256), &claims, &enc_key).unwrap(),
             username: user,
         }
     }
@@ -89,13 +93,14 @@ impl AuthService {
         let id = Uuid::new_v4().to_string();
 
         let hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST).unwrap().to_string();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
 
         sqlx::query("INSERT INTO users (id, name, email, password_hash, created_at) VALUES ($1, $2, $3, $4, $5)")
             .bind(&id)
             .bind(&req.username)
             .bind(&req.email)
             .bind(&hash)
-            .bind(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64)
+            .bind(now)
             .execute(db)
             .await
             .map_err(|e| e.to_string())?;
