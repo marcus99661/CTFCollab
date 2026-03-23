@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS event_members (
     PRIMARY KEY (event_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    yjs_state BYTEA,
+    updated_at BIGINT NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
 CREATE TABLE IF NOT EXISTS challenges (
     id TEXT PRIMARY KEY,
     event_id TEXT NOT NULL DEFAULT '',
@@ -37,15 +46,6 @@ CREATE TABLE IF NOT EXISTS challenges (
     url TEXT NOT NULL DEFAULT '',
     note_id TEXT REFERENCES notes(id),
     created_at BIGINT NOT NULL,
-    updated_at BIGINT NOT NULL,
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
-);
-
-CREATE TABLE IF NOT EXISTS notes (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL DEFAULT '',
-    yjs_state BYTEA,
     updated_at BIGINT NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
