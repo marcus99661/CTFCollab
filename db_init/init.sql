@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS challenges (
     category TEXT NOT NULL DEFAULT '',
     points INT NOT NULL DEFAULT 0,
     url TEXT NOT NULL DEFAULT '',
+    note_id TEXT REFERENCES notes(id),
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
