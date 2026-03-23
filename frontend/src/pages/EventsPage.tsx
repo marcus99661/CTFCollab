@@ -6,13 +6,58 @@ import { makeId, formatDate } from "../utils";
 import { getUserIdFromToken } from "../auth";
 import "../styles/ui.css";
 
+function AddEventOverlay({ onClose, onAdd }: {
+    onClose: () => void;
+    onAdd: (name: string, desc: string, startAt: string, endAt: string) => void;
+}) {
+    const [name, setName] = useState("");
+    const [desc, setDesc] = useState("");
+    const [startAt, setStartAt] = useState("");
+    const [endAt, setEndAt] = useState("");
+
+    function submit() {
+        if (!name.trim()) return;
+        onAdd(name, desc, startAt, endAt);
+        onClose();
+    }
+
+    return (
+        <div className="overlay" onClick={onClose}>
+            <div className="overlay-box" onClick={e => e.stopPropagation()}>
+                <div className="overlay-box-header">
+                    <h5 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>New event</h5>
+                </div>
+                <div className="overlay-box-body">
+                    <label className="form-field">
+                        <span className="form-field-label">Name</span>
+                        <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Event name" autoFocus />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Description</span>
+                        <input className="input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional" />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Start</span>
+                        <input className="input" type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">End</span>
+                        <input className="input" type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} />
+                    </label>
+                    <div className="form-actions">
+                        <button className="btn btn-primary" onClick={submit} disabled={!name.trim()}>Create</button>
+                        <button className="btn" onClick={onClose}>Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function EventsPage() {
     const [status, setStatus] = useState("Loading...");
     const [events, setEvents] = useState<EventDoc[]>([]);
-    const [newName, setNewName] = useState("");
-    const [newDesc, setNewDesc] = useState("");
-    const [newStartAt, setNewStartAt] = useState("");
-    const [newEndAt, setNewEndAt] = useState("");
+    const [showForm, setShowForm] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -52,26 +97,20 @@ export default function EventsPage() {
         };
     }, []);
 
-    async function createEvent() {
-        const name = newName.trim();
-        if (!name) return;
+    async function createEvent(name: string, desc: string, startAt: string, endAt: string) {
         try {
             const db = await getDb();
             await db.events.insert({
                 id: makeId(),
-                name,
-                description: newDesc.trim(),
+                name: name.trim(),
+                description: desc.trim(),
                 createdBy: getUserIdFromToken() ?? "",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 isDeleted: false,
-                startAt: newStartAt ? new Date(newStartAt).getTime() : null,
-                endAt: newEndAt ? new Date(newEndAt).getTime() : null,
+                startAt: startAt ? new Date(startAt).getTime() : null,
+                endAt: endAt ? new Date(endAt).getTime() : null,
             });
-            setNewName("");
-            setNewDesc("");
-            setNewStartAt("");
-            setNewEndAt("");
         } catch (e) {
             console.error("createEvent failed:", e);
             setStatus("Create event failed (check console)");
@@ -92,50 +131,11 @@ export default function EventsPage() {
 
     return (
         <div style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
-            <h2 className="page-title">Events</h2>
-
-            <div className="card" style={{ marginBottom: 20 }}>
-                <div className="form-row" style={{ marginBottom: 8 }}>
-                    <input
-                        className="input"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        placeholder="Event name (required)"
-                        style={{ flex: "1 1 200px" }}
-                        onKeyDown={(e) => { if (e.key === "Enter") createEvent(); }}
-                    />
-                    <input
-                        className="input"
-                        value={newDesc}
-                        onChange={(e) => setNewDesc(e.target.value)}
-                        placeholder="Description"
-                        style={{ flex: "2 1 260px" }}
-                        onKeyDown={(e) => { if (e.key === "Enter") createEvent(); }}
-                    />
-                </div>
-                <div className="form-row">
-                    <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px" }}>
-                        <span style={{ fontSize: 11, color: "var(--muted)" }}>Start</span>
-                        <input
-                            className="input"
-                            type="datetime-local"
-                            value={newStartAt}
-                            onChange={(e) => setNewStartAt(e.target.value)}
-                        />
-                    </label>
-                    <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px" }}>
-                        <span style={{ fontSize: 11, color: "var(--muted)" }}>End</span>
-                        <input
-                            className="input"
-                            type="datetime-local"
-                            value={newEndAt}
-                            onChange={(e) => setNewEndAt(e.target.value)}
-                        />
-                    </label>
-                    <button className="btn btn-primary" onClick={createEvent} disabled={!newName.trim()} style={{ alignSelf: "flex-end" }}>
-                        Add Event
-                    </button>
-                </div>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+                <h2 className="page-title" style={{ margin: 0 }}>Events</h2>
+                <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ marginLeft: "auto" }}>
+                    New event
+                </button>
             </div>
 
             <div style={{ marginBottom: 12 }}>
@@ -146,7 +146,7 @@ export default function EventsPage() {
             </div>
 
             {events.length === 0 ? (
-                <div className="empty-state">No events yet. Create one above.</div>
+                <div className="empty-state">No events yet.</div>
             ) : (
                 <div className="card" style={{ padding: 0 }}>
                     <table className="table">
@@ -182,6 +182,13 @@ export default function EventsPage() {
                         </tbody>
                     </table>
                 </div>
+            )}
+
+            {showForm && (
+                <AddEventOverlay
+                    onClose={() => setShowForm(false)}
+                    onAdd={createEvent}
+                />
             )}
         </div>
     );
