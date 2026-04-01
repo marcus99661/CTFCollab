@@ -47,6 +47,7 @@ pub struct EventDoc {
     pub is_deleted: bool,
     pub start_at: Option<i64>,
     pub end_at: Option<i64>,
+    pub ctftime_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

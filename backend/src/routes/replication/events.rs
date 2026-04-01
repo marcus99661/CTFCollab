@@ -24,7 +24,7 @@ async fn pull(
             sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at
+                SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id
                 FROM events e
                 JOIN event_members em ON em.event_id = e.id AND em.user_id = $2
                 ORDER BY e.updated_at ASC, e.id ASC
@@ -41,7 +41,7 @@ async fn pull(
             sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at
+                SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id
                 FROM events e
                 JOIN event_members em ON em.event_id = e.id AND em.user_id = $3
                 WHERE (e.updated_at > $1) OR (e.updated_at = $1 AND e.id > $2)
@@ -112,17 +112,18 @@ async fn push(
         let applied: Option<EventDoc> = sqlx::query_as!(
             EventDoc,
             r#"
-            INSERT INTO events (id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO events (id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (id) DO UPDATE
             SET name        = EXCLUDED.name,
                 description = EXCLUDED.description,
                 updated_at  = EXCLUDED.updated_at,
                 is_deleted  = EXCLUDED.is_deleted,
                 start_at    = EXCLUDED.start_at,
-                end_at      = EXCLUDED.end_at
+                end_at      = EXCLUDED.end_at,
+                ctftime_id  = EXCLUDED.ctftime_id
             WHERE EXCLUDED.updated_at >= events.updated_at
-            RETURNING id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at
+            RETURNING id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id
             "#,
             incoming.id,
             incoming.name,
@@ -132,7 +133,8 @@ async fn push(
             incoming.updated_at,
             incoming.is_deleted,
             incoming.start_at,
-            incoming.end_at
+            incoming.end_at,
+            incoming.ctftime_id
         )
         .fetch_optional(&state.db)
         .await
@@ -158,7 +160,7 @@ async fn push(
             let server_doc: Option<EventDoc> = sqlx::query_as!(
                 EventDoc,
                 r#"
-                SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at
+                SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id
                 FROM events
                 WHERE id = $1
                 "#,

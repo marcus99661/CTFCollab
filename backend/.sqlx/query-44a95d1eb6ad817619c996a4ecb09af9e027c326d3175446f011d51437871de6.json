@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at\n                FROM events\n                WHERE id = $1\n                ",
+  "query": "\n                SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id\n                FROM events e\n                JOIN event_members em ON em.event_id = e.id AND em.user_id = $3\n                WHERE (e.updated_at > $1) OR (e.updated_at = $1 AND e.id > $2)\n                ORDER BY e.updated_at ASC, e.id ASC\n                LIMIT $4\n                ",
   "describe": {
     "columns": [
       {
@@ -101,11 +101,25 @@
             "name": "end_at"
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "ctftime_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "ctftime_id"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Int8",
+        "Text",
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
@@ -117,8 +131,9 @@
       false,
       false,
       true,
+      true,
       true
     ]
   },
-  "hash": "c3f94dad59f0b2288b3aa37cfa64ee9f517280423be193a648ed1f64242586ef"
+  "hash": "44a95d1eb6ad817619c996a4ecb09af9e027c326d3175446f011d51437871de6"
 }

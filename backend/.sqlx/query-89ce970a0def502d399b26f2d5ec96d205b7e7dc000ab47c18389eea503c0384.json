@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO events (id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            ON CONFLICT (id) DO UPDATE\n            SET name        = EXCLUDED.name,\n                description = EXCLUDED.description,\n                updated_at  = EXCLUDED.updated_at,\n                is_deleted  = EXCLUDED.is_deleted,\n                start_at    = EXCLUDED.start_at,\n                end_at      = EXCLUDED.end_at\n            WHERE EXCLUDED.updated_at >= events.updated_at\n            RETURNING id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at\n            ",
+  "query": "\n                SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id\n                FROM events\n                WHERE id = $1\n                ",
   "describe": {
     "columns": [
       {
@@ -101,19 +101,22 @@
             "name": "end_at"
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "ctftime_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "ctftime_id"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Int8",
-        "Int8",
-        "Bool",
-        "Int8",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -125,8 +128,9 @@
       false,
       false,
       true,
+      true,
       true
     ]
   },
-  "hash": "48dc5fd00206bc0f6fb6c3b8aa687512dac6fd214dc550b0f47b3b34f0281fc8"
+  "hash": "89ce970a0def502d399b26f2d5ec96d205b7e7dc000ab47c18389eea503c0384"
 }

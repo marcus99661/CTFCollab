@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at\n                FROM events e\n                JOIN event_members em ON em.event_id = e.id AND em.user_id = $2\n                ORDER BY e.updated_at ASC, e.id ASC\n                LIMIT $1\n                ",
+  "query": "\n            INSERT INTO events (id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ON CONFLICT (id) DO UPDATE\n            SET name        = EXCLUDED.name,\n                description = EXCLUDED.description,\n                updated_at  = EXCLUDED.updated_at,\n                is_deleted  = EXCLUDED.is_deleted,\n                start_at    = EXCLUDED.start_at,\n                end_at      = EXCLUDED.end_at,\n                ctftime_id  = EXCLUDED.ctftime_id\n            WHERE EXCLUDED.updated_at >= events.updated_at\n            RETURNING id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id\n            ",
   "describe": {
     "columns": [
       {
@@ -101,12 +101,31 @@
             "name": "end_at"
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "ctftime_id",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "ctftime_id"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
         "Int8",
-        "Text"
+        "Int8",
+        "Bool",
+        "Int8",
+        "Int8",
+        "Int4"
       ]
     },
     "nullable": [
@@ -118,8 +137,9 @@
       false,
       false,
       true,
+      true,
       true
     ]
   },
-  "hash": "cb38c9e3c4c292695860c8b77cf25c1b957a2eb34787dc61a56d2de2f181776e"
+  "hash": "4335cb911fc1f0bbb5d58bb8f3906463b6703150b1996f2d2095fcee7ac96c28"
 }
