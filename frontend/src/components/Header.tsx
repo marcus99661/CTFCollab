@@ -5,6 +5,7 @@ import { useServerStatus, type ServerStatus } from "../hooks/useServerStatus";
 const navLinks = [
     { to: "/", label: "Dashboard" },
     { to: "/events", label: "Events" },
+    { to: "/ctftime", label: "CTFtime" },
 ];
 
 const statusConfig: Record<ServerStatus, { color: string; label: string; title: string }> = {
