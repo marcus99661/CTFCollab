@@ -132,15 +132,15 @@ function AddChallengeOverlay({ onClose, onAdd }: {
                         <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Challenge name" autoFocus />
                     </label>
                     <label className="form-field">
-                        <span className="form-field-label">Points</span>
+                        <span className="form-field-label">Points<span className="form-field-optional">(optional)</span></span>
                         <input className="input" type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="0" />
                     </label>
                     <label className="form-field">
-                        <span className="form-field-label">Category</span>
+                        <span className="form-field-label">Category<span className="form-field-optional">(optional)</span></span>
                         <input className="input" value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Web, Pwn, Crypto..." />
                     </label>
                     <label className="form-field">
-                        <span className="form-field-label">URL</span>
+                        <span className="form-field-label">URL<span className="form-field-optional">(optional)</span></span>
                         <input className="input" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
                     </label>
                     <div className="form-actions">
@@ -248,12 +248,16 @@ export default function EventDetailPage() {
         }
     }
 
-    async function fetchMembers() {
+    async function fetchMembers(retry = true) {
         if (!id) return;
         try {
             const res = await authFetch(`/api/events/${id}/members`);
             if (!res.ok) return;
             const list: Member[] = await res.json();
+            if (list.length === 0 && retry) {
+                setTimeout(() => fetchMembers(false), 2000);
+                return;
+            }
             setMembers(list);
             const me = list.find(m => m.user_id === myUserId);
             setMyRole(me?.role ?? null);

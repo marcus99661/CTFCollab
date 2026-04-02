@@ -33,15 +33,15 @@ function AddEventOverlay({ onClose, onAdd }: {
                         <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Event name" autoFocus />
                     </label>
                     <label className="form-field">
-                        <span className="form-field-label">Description</span>
-                        <input className="input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional" />
+                        <span className="form-field-label">Description<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="" />
                     </label>
                     <label className="form-field">
-                        <span className="form-field-label">Start</span>
+                        <span className="form-field-label">Start<span className="form-field-optional">(optional)</span></span>
                         <input className="input" type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} />
                     </label>
                     <label className="form-field">
-                        <span className="form-field-label">End</span>
+                        <span className="form-field-label">End<span className="form-field-optional">(optional)</span></span>
                         <input className="input" type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} />
                     </label>
                     <div className="form-actions">
