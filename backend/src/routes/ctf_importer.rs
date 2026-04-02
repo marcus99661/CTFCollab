@@ -10,6 +10,7 @@ use crate::state::AppState;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/ctftime/events", get(list_events))
+        .route("/ctftime/events/running", get(list_running))
         .route("/ctftime/events/{id}", get(get_event))
 }
 
@@ -40,6 +41,40 @@ async fn list_events(
 
     let events = serde_json::from_str::<Vec<CtftimeEvent>>(&body)
         .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(Json(events))
+}
+
+async fn list_running(
+    _auth: AuthUser,
+) -> Result<Json<Vec<CtftimeEvent>>, AppError> {
+    let client = Client::new();
+
+    let now_ts = chrono::Utc::now().timestamp();
+    let url = format!(
+        "https://ctftime.org/api/v1/events/?limit=500&start={}",
+        now_ts - (180 * 24 * 60 * 60)
+    );
+
+    let res = client
+        .get(&url)
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0")
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let body = res.text().await.map_err(|e| AppError::Internal(e.to_string()))?;
+    let mut events = serde_json::from_str::<Vec<CtftimeEvent>>(&body)
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    events.retain(|e| {
+        let started = chrono::DateTime::parse_from_rfc3339(&e.start)
+            .map(|t| t.timestamp() <= now_ts)
+            .unwrap_or(false);
+        let not_finished = chrono::DateTime::parse_from_rfc3339(&e.finish)
+            .map(|t| t.timestamp() > now_ts)
+            .unwrap_or(false);
+        started && not_finished
+    });
 
     Ok(Json(events))
 }
