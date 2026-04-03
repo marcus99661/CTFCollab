@@ -92,7 +92,7 @@ async fn push(
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if !exists && auth.event_based {
-            return Err(AppError::Forbidden);
+            continue;
         }
 
         if exists {
@@ -106,8 +106,8 @@ async fn push(
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
             match member {
-                None => return Err(AppError::Forbidden),
-                Some(role) if incoming.is_deleted && role != EventRole::Owner => return Err(AppError::Forbidden),
+                None => continue,
+                Some(role) if incoming.is_deleted && role != EventRole::Owner => continue,
                 _ => {}
             }
         }

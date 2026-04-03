@@ -33,6 +33,10 @@ export type ChallengeDoc = {
     updatedAt: number;
     isDeleted: boolean;
     noteId: string | null;
+    solved: boolean;
+    flag: string | null;
+    solvedBy: string | null;
+    solvers?: string[];
 };
 
 const noteSchema = {
@@ -84,7 +88,11 @@ const challengeSchema = {
         createdAt: { type: "number" },
         updatedAt: { type: "number" },
         isDeleted: { type: "boolean" },
-        noteId: { type: ["string", "null"] }
+        noteId: { type: ["string", "null"] },
+        solved: { type: "boolean" },
+        flag: { type: ["string", "null"] },
+        solvedBy: { type: ["string", "null"] },
+        solvers: { type: "array", items: { type: "string" } },
     },
     required: ["id", "eventId", "title", "category", "points", "url", "createdAt", "updatedAt", "isDeleted"]
 } as const;

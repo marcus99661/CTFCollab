@@ -234,16 +234,31 @@ function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => voi
     const color = categoryColor(ch.category || "misc");
     const navigate = useNavigate();
 
+    const statusBg = ch.solved
+        ? "rgba(63, 185, 80, 0.15)"
+        : (ch.solvers && ch.solvers.length > 0)
+            ? "rgba(210, 153, 34, 0.15)"
+            : "rgba(139, 148, 158, 0.1)";
+
     return (
         <div
             className="challenge-card"
             onClick={() => navigate(`/challenges/${ch.id}`)}
-            style={{ border: `1px solid ${color}55`, borderLeft: `4px solid ${color}` }}
+            style={{
+                background: statusBg,
+                borderLeft: `4px solid ${color}`,
+            }}
         >
             <div className="challenge-card-title">{ch.title}</div>
             <div className="challenge-card-meta">
                 {ch.points ? <span style={{ color, fontWeight: 600 }}>{ch.points} pts</span> : null}
             </div>
+            {ch.solved && ch.solvedBy && (
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>by {ch.solvedBy}</div>
+            )}
+            {!ch.solved && ch.solvers && ch.solvers.length > 0 && (
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>{ch.solvers.join(", ")}</div>
+            )}
             <div className="challenge-card-footer">
                 {ch.url && (
                     <a
@@ -407,6 +422,10 @@ export default function EventDetailPage() {
                 updatedAt: Date.now(),
                 isDeleted: false,
                 noteId,
+                solved: false,
+                flag: null,
+                solvedBy: null,
+                solvers: [],
             });
         } catch (e) {
             console.error("createChallenge failed:", e);
@@ -423,6 +442,7 @@ export default function EventDetailPage() {
             console.error("deleteChallenge failed:", e);
         }
     }
+
 
     async function fetchMembers() {
         if (!id) return;

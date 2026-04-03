@@ -57,13 +57,17 @@ pub struct ChallengeDoc {
     pub id: String,
     pub event_id: String,
     pub title: String,
-    pub category: String, // Enum
+    pub category: String, // TODO: Enum
     pub points: i32,
     pub url: String,
     pub created_at: i64,
     pub updated_at: i64,
     pub is_deleted: bool,
     pub note_id: Option<String>,
+    pub solved: bool,
+    pub flag: Option<String>,
+    pub solved_by: Option<String>,
+    pub solvers: Vec<String>,
 }
 
 /*

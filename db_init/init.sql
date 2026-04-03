@@ -49,7 +49,11 @@ CREATE TABLE IF NOT EXISTS challenges (
     note_id TEXT REFERENCES notes(id),
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    solved BOOLEAN NOT NULL DEFAULT FALSE,
+    flag TEXT,
+    solved_by TEXT,
+    solvers TEXT[] NOT NULL DEFAULT '{}'
 );
 
 
