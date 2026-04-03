@@ -121,18 +121,21 @@ export default function CtftimePage() {
     async function importEvent(event: CtftimeEvent) {
         const db = await getDb();
         const newId = makeId();
-        await db.events.insert({
+        const now = Date.now();
+        const doc = {
             id: newId,
             name: event.title,
             description: event.description,
             createdBy: getUserIdFromToken() ?? "",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: now,
+            updatedAt: now,
             isDeleted: false,
             startAt: new Date(event.start).getTime(),
             endAt: new Date(event.finish).getTime(),
             ctftimeId: event.id,
-        });
+        };
+        await db.events.insert(doc);
+
         setLocalMap(prev => {
             const next = new Map(prev);
             const existing = next.get(event.id) ?? [];

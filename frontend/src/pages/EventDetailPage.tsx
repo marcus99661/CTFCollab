@@ -333,6 +333,9 @@ export default function EventDetailPage() {
     const myUserId = getUserIdFromToken();
     const countdown = useCountdown(event);
 
+    // If members haven't synced yet but the event exists locally, get role from createdBy
+    const effectiveRole = myRole ?? (event?.createdBy === myUserId ? "owner" : null);
+
     useEffect(() => {
         if (!id) return;
         let stopEventSync: (() => void) | null = null;
@@ -342,7 +345,16 @@ export default function EventDetailPage() {
 
         async function init() {
             const db = await getDb();
-            stopEventSync = startEventsAutoSync({ db, baseUrl: "", debounceMs: 900, pollMs: 8000 });
+            let membersLoaded = false;
+            stopEventSync = startEventsAutoSync({
+                db, baseUrl: "", debounceMs: 900, pollMs: 8000,
+                onStatus: (status) => {
+                    if (status === "Synced" && !membersLoaded) {
+                        membersLoaded = true;
+                        fetchMembers();
+                    }
+                },
+            });
             stopChallengeSync = startChallengesAutoSync({ db, baseUrl: "", debounceMs: 900, pollMs: 8000, onStatus: setSyncStatus });
             startNotesAutoSync({ db, baseUrl: "" });
 
@@ -412,16 +424,12 @@ export default function EventDetailPage() {
         }
     }
 
-    async function fetchMembers(retry = true) {
+    async function fetchMembers() {
         if (!id) return;
         try {
             const res = await authFetch(`/api/events/${id}/members`);
             if (!res.ok) return;
             const list: Member[] = await res.json();
-            if (list.length === 0 && retry) {
-                setTimeout(() => fetchMembers(false), 2000);
-                return;
-            }
             setMembers(list);
             const me = list.find(m => m.user_id === myUserId);
             setMyRole(me?.role ?? null);
@@ -472,7 +480,7 @@ export default function EventDetailPage() {
                 <>
                     <div className="event-page-header">
                         <h1 className="event-page-title">{event.name}</h1>
-                        {myRole === "owner" && (
+                        {effectiveRole === "owner" && (
                             <button className="btn" onClick={() => setShowInvite(true)}>
                                 Invite link
                             </button>
@@ -498,7 +506,7 @@ export default function EventDetailPage() {
                                     <span className={`member-role ${m.role === "owner" ? "member-role--owner" : ""}`}>
                                         {m.role}
                                     </span>
-                                    {myRole === "owner" && m.user_id !== myUserId && (
+                                    {effectiveRole === "owner" && m.user_id !== myUserId && (
                                         <button className="btn-text" onClick={() => kickMember(m.user_id)}>
                                             kick
                                         </button>
@@ -506,7 +514,7 @@ export default function EventDetailPage() {
                                 </div>
                             ))}
 
-                            {myRole === "owner" && (
+                            {effectiveRole === "owner" && (
                                 <div className="invite-row">
                                     <input
                                         className="input"
