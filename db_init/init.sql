@@ -3,7 +3,8 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at BIGINT NOT NULL
+    created_at BIGINT NOT NULL,
+    is_event_based BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TYPE event_role AS ENUM ('owner', 'member');
@@ -51,6 +52,23 @@ CREATE TABLE IF NOT EXISTS challenges (
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+
+CREATE TABLE IF NOT EXISTS event_invites (
+    token TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL UNIQUE REFERENCES events(id),
+    max_uses INTEGER,
+    uses INTEGER NOT NULL DEFAULT 0,
+    expires_at BIGINT,
+    event_based BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS invite_joins (
+    token TEXT NOT NULL REFERENCES event_invites(token) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    joined_at BIGINT NOT NULL,
+    PRIMARY KEY (token, user_id)
+);
 
 CREATE INDEX IF NOT EXISTS notes_updated_idx ON notes (updated_at, id);
 CREATE INDEX IF NOT EXISTS events_updated_idx ON events (updated_at, id);

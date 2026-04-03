@@ -15,6 +15,7 @@ pub struct Users {
     pub name: String,
     pub email: String,
     pub password_hash: String,
+    pub is_event_based: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

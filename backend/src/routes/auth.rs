@@ -6,6 +6,7 @@ use crate::state::AppState;
 
 pub struct AuthUser {
     pub user_id: String,
+    pub event_based: bool,
 }
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -25,7 +26,10 @@ impl FromRequestParts<AppState> for AuthUser {
         let token_data = decode::<Claims>(token, &state.dec_key, &Validation::new(Algorithm::HS256))
             .map_err(|_| AppError::Unauthorized)?;
 
-        Ok(AuthUser { user_id: token_data.claims.sub })
+        Ok(AuthUser {
+            user_id: token_data.claims.sub,
+            event_based: token_data.claims.event_based,
+        })
     }
 }
 

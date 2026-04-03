@@ -29,8 +29,9 @@ pub struct AuthResponse {
 // Body of the JWT
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String, // user id
+    pub sub: String,
     pub exp: usize,
+    pub event_based: bool,
 }
 
 const JWT_EXPIRY_SECS: usize = 7 * 24 * 60 * 60; // 7 days
@@ -39,11 +40,12 @@ pub struct AuthService;
 
 impl AuthService {
 
-    fn create_token(id: String, user: String, enc_key: &EncodingKey) -> AuthResponse {
+    pub fn create_token(id: String, user: String, event_based: bool, enc_key: &EncodingKey) -> AuthResponse {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize;
         let claims = Claims {
             sub: id,
             exp: now + JWT_EXPIRY_SECS,
+            event_based,
         };
 
         AuthResponse {
@@ -54,7 +56,7 @@ impl AuthService {
 
     pub async fn login(db: &PgPool, enc_key: &EncodingKey, req: LoginRequest) -> Result<AuthResponse, String> {
         let user = sqlx::query_as::<_, crate::models::Users>(
-            "SELECT id, name, email, password_hash FROM users WHERE name = $1"
+            "SELECT id, name, email, password_hash, is_event_based FROM users WHERE name = $1"
         )
             .bind(&req.username)
             .fetch_optional(db)
@@ -66,11 +68,11 @@ impl AuthService {
             None => return Err("Invalid credentials".to_string()),
         };
 
-        if bcrypt::verify(&req.password, &user.password_hash).is_err()  {
+        if bcrypt::verify(&req.password, &user.password_hash).is_err() {
             return Err("Invalid password".to_string())
         }
 
-        Ok(Self::create_token(user.id, req.username, enc_key))
+        Ok(Self::create_token(user.id, req.username, user.is_event_based, enc_key))
     }
 
     pub async fn register(db: &PgPool, enc_key: &EncodingKey, req: RegisterRequest) -> Result<AuthResponse, String> {
@@ -95,7 +97,7 @@ impl AuthService {
         let hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST).unwrap().to_string();
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
 
-        sqlx::query("INSERT INTO users (id, name, email, password_hash, created_at) VALUES ($1, $2, $3, $4, $5)")
+        sqlx::query("INSERT INTO users (id, name, email, password_hash, created_at, is_event_based) VALUES ($1, $2, $3, $4, $5, FALSE)")
             .bind(&id)
             .bind(&req.username)
             .bind(&req.email)
@@ -105,6 +107,6 @@ impl AuthService {
             .await
             .map_err(|e| e.to_string())?;
 
-        Ok(Self::create_token(id, req.username, enc_key))
+        Ok(Self::create_token(id, req.username, false, enc_key))
     }
 }

@@ -91,6 +91,10 @@ async fn push(
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
+        if !exists && auth.event_based {
+            return Err(AppError::Forbidden);
+        }
+
         if exists {
             let member = sqlx::query_scalar::<_, EventRole>(
                 "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
