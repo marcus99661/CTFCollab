@@ -18,15 +18,22 @@ export function clearCollabUser(): void {
     localStorage.removeItem(COLLAB_USER_KEY);
 }
 
-export function getUserIdFromToken(): string | null {
+function decodeTokenPayload(): Record<string, any> | null {
     const token = getToken();
     if (!token) return null;
     try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.sub ?? null;
+        return JSON.parse(atob(token.split('.')[1]));
     } catch {
         return null;
     }
+}
+
+export function getUserIdFromToken(): string | null {
+    return decodeTokenPayload()?.sub ?? null;
+}
+
+export function isEventBased(): boolean {
+    return decodeTokenPayload()?.event_based === true;
 }
 
 export function getToken(): string | null {

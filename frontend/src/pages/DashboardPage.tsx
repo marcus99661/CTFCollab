@@ -4,6 +4,7 @@ import { getDb, type EventDoc, type ChallengeDoc } from "../db";
 import { startEventsAutoSync } from "../sync/eventsSync";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { formatDate } from "../utils";
+import { isEventBased } from "../auth";
 import "../styles/ui.css";
 import "../styles/DashboardPage.css";
 
@@ -130,9 +131,11 @@ export default function DashboardPage() {
                     <hr style={{ marginBottom: 12 }} />
 
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                        <Link to="/events" className="btn btn-primary" style={{ textDecoration: "none" }}>
-                            Create Event
-                        </Link>
+                        {!isEventBased() && (
+                            <Link to="/events" className="btn btn-primary" style={{ textDecoration: "none" }}>
+                                Create Event
+                            </Link>
+                        )}
                         <Link to="/events" className="btn" style={{ textDecoration: "none" }}>
                             View All
                         </Link>

@@ -4,6 +4,7 @@ import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import ChallengeDetailPage from "./pages/ChallengeDetailPage";
 import CtftimePage from "./pages/CtftimePage";
+import InvitePage from "./pages/InvitePage";
 import LoginPage from "./pages/LoginPage";
 import PageShell from "./components/PageShell";
 import { getToken } from "./auth";
@@ -17,6 +18,7 @@ export default function App() {
     return (
         <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/invite/:token" element={<InvitePage />} />
             <Route
                 path="/*"
                 element={

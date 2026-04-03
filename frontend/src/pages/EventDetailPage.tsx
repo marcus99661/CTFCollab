@@ -11,6 +11,169 @@ import "../styles/EventDetailPage.css";
 
 type Member = { user_id: string; username: string; role: string };
 
+interface EventInvite {
+    token: string;
+    max_uses: number | null;
+    uses: number;
+    expires_at: number | null;
+    event_based: boolean;
+}
+
+interface InviteJoin {
+    username: string;
+    joined_at: number;
+}
+
+function InviteOverlay({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+    const [invite, setInvite] = useState<EventInvite | null | undefined>(undefined);
+    const [joins, setJoins] = useState<InviteJoin[]>([]);
+    const [maxUses, setMaxUses] = useState("");
+    const [expiresHours, setExpiresHours] = useState("");
+    const [expiresMinutes, setExpiresMinutes] = useState("");
+    const [eventBased, setEventBased] = useState(true);
+    const [copied, setCopied] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function refresh() {
+        try {
+            const [inviteRes, joinsRes] = await Promise.all([
+                authFetch(`/api/events/${eventId}/invite`),
+                authFetch(`/api/events/${eventId}/invite/joins`),
+            ]);
+            setInvite(inviteRes.ok ? await inviteRes.json() : null);
+            if (joinsRes.ok) setJoins(await joinsRes.json());
+        } catch {
+            setInvite(null);
+        }
+    }
+
+    useEffect(() => {
+        refresh();
+        const id = setInterval(refresh, 5000);
+        return () => clearInterval(id);
+    }, [eventId]);
+
+    async function createInvite() {
+        setError(null);
+        const totalMinutes = (parseInt(expiresHours) || 0) * 60 + (parseInt(expiresMinutes) || 0);
+        const body: any = { event_based: eventBased };
+        if (maxUses.trim()) body.max_uses = parseInt(maxUses);
+        if (totalMinutes > 0) body.expires_in_minutes = totalMinutes;
+
+        const res = await authFetch(`/api/events/${eventId}/invite`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+        if (res.ok) {
+            await refresh();
+        } else {
+            setError("Failed to create invite");
+        }
+    }
+
+    async function deleteInvite() {
+        await authFetch(`/api/events/${eventId}/invite`, { method: "DELETE" });
+        await refresh();
+    }
+
+    function copyLink() {
+        if (!invite) return;
+        navigator.clipboard.writeText(`${window.location.origin}/invite/${invite.token}`);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    }
+
+    function formatExpiry(ts: number) {
+        const diff = ts - Date.now();
+        if (diff <= 0) return "Expired";
+        const h = Math.floor(diff / (60 * 60 * 1000));
+        const m = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+        return h > 0 ? `${h}h ${m}m remaining` : `${m}m remaining`;
+    }
+
+    return (
+        <div className="overlay" onClick={onClose}>
+            <div className="overlay-box" onClick={e => e.stopPropagation()} style={{ width: 480 }}>
+                <div className="overlay-box-header">
+                    <h5 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Invite link</h5>
+                </div>
+                <div className="overlay-box-body">
+                    {invite === undefined && <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading...</div>}
+
+                    {invite === null && (
+                        <>
+                            <label className="form-field">
+                                <span className="form-field-label">Max uses<span className="form-field-optional">(optional)</span></span>
+                                <input className="input" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} placeholder="Unlimited" />
+                            </label>
+                            <div className="form-field">
+                                <span className="form-field-label">Expires in<span className="form-field-optional">(optional)</span></span>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                    <input className="input" type="number" value={expiresHours} onChange={e => setExpiresHours(e.target.value)} placeholder="Hours" style={{ flex: 1 }} />
+                                    <input className="input" type="number" value={expiresMinutes} onChange={e => setExpiresMinutes(e.target.value)} placeholder="Minutes" style={{ flex: 1 }} />
+                                </div>
+                            </div>
+                            <label className="form-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <input type="checkbox" checked={eventBased} onChange={e => setEventBased(e.target.checked)} />
+                                <span title="Account can only access events they were invited to. Cannot create new events." style={{ fontSize: 13, cursor: "help", borderBottom: "1px dotted var(--muted)" }}>Event-based account</span>
+                            </label>
+                            {error && <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>}
+                            <div className="form-actions">
+                                <button className="btn btn-primary" onClick={createInvite}>Create invite</button>
+                                <button className="btn" onClick={onClose}>Cancel</button>
+                            </div>
+                        </>
+                    )}
+
+                    {invite && (
+                        <>
+                            <div className="form-field">
+                                <span className="form-field-label">Link</span>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                    <input
+                                        className="input"
+                                        readOnly
+                                        value={`${window.location.origin}/invite/${invite.token}`}
+                                        style={{ flex: 1, cursor: "text" }}
+                                    />
+                                    <button className="btn" onClick={copyLink}>
+                                        {copied ? "Copied!" : "Copy"}
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: 13, color: "var(--muted)", display: "flex", gap: 16 }}>
+                                <span>Uses: {invite.uses}{invite.max_uses != null ? ` / ${invite.max_uses}` : ""}</span>
+                                {invite.expires_at && <span>{formatExpiry(invite.expires_at)}</span>}
+                                <span>{invite.event_based ? "Event-based" : "Full account"}</span>
+                            </div>
+
+                            {joins.length > 0 && (
+                                <div className="panel" style={{ marginTop: 4 }}>
+                                    <div className="panel-header">Joined via invite</div>
+                                    <div className="panel-body" style={{ gap: 6 }}>
+                                        {joins.map((j, i) => (
+                                            <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                                                <span>{j.username}</span>
+                                                <span style={{ color: "var(--muted)" }}>{new Date(j.joined_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", hour12: false })}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="form-actions" style={{ marginTop: 4 }}>
+                                <button className="btn btn-danger" onClick={deleteInvite}>Delete invite</button>
+                                <button className="btn" onClick={onClose}>Close</button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // TODO: Replace these hard-coded categories with server provided ENUM
 const CATEGORY_COLORS: Record<string, string> = {
     web: "#1d4ed8",
@@ -160,6 +323,7 @@ export default function EventDetailPage() {
     const [event, setEvent] = useState<EventDoc | null>(null);
     const [challenges, setChallenges] = useState<ChallengeDoc[]>([]);
     const [showForm, setShowForm] = useState(false);
+    const [showInvite, setShowInvite] = useState(false);
     const [syncStatus, setSyncStatus] = useState("Loading...");
     const [members, setMembers] = useState<Member[]>([]);
     const [myRole, setMyRole] = useState<string | null>(null);
@@ -308,6 +472,11 @@ export default function EventDetailPage() {
                 <>
                     <div className="event-page-header">
                         <h1 className="event-page-title">{event.name}</h1>
+                        {myRole === "owner" && (
+                            <button className="btn" onClick={() => setShowInvite(true)}>
+                                Invite link
+                            </button>
+                        )}
                         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
                             Add challenge
                         </button>
@@ -390,6 +559,9 @@ export default function EventDetailPage() {
                     onClose={() => setShowForm(false)}
                     onAdd={createChallenge}
                 />
+            )}
+            {showInvite && id && (
+                <InviteOverlay eventId={id} onClose={() => setShowInvite(false)} />
             )}
         </div>
     );

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getDb, type EventDoc } from "../db";
 import { startEventsAutoSync } from "../sync/eventsSync";
 import { makeId, formatDate } from "../utils";
-import { getUserIdFromToken } from "../auth";
+import { getUserIdFromToken, isEventBased } from "../auth";
 import "../styles/ui.css";
 
 function AddEventOverlay({ onClose, onAdd }: {
@@ -133,9 +133,11 @@ export default function EventsPage() {
         <div style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
                 <h2 className="page-title" style={{ margin: 0 }}>Events</h2>
-                <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ marginLeft: "auto" }}>
-                    New event
-                </button>
+                {!isEventBased() && (
+                    <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ marginLeft: "auto" }}>
+                        New event
+                    </button>
+                )}
             </div>
 
             <div style={{ marginBottom: 12 }}>

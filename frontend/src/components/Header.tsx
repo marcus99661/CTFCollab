@@ -1,11 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { clearToken, getCollabUser, clearCollabUser } from "../auth";
+import { clearToken, getCollabUser, clearCollabUser, isEventBased } from "../auth";
 import { useServerStatus, type ServerStatus } from "../hooks/useServerStatus";
 
-const navLinks = [
-    { to: "/", label: "Dashboard" },
-    { to: "/events", label: "Events" },
-    { to: "/ctftime", label: "CTFtime" },
+const allNavLinks = [
+    { to: "/", label: "Dashboard", eventBasedHidden: false },
+    { to: "/events", label: "Events", eventBasedHidden: false },
+    { to: "/ctftime", label: "CTFtime", eventBasedHidden: true },
 ];
 
 const statusConfig: Record<ServerStatus, { color: string; label: string; title: string }> = {
@@ -21,6 +21,8 @@ export default function Header() {
     const sc = statusConfig[serverStatus];
 
     const collabUser = getCollabUser();
+    const eventBased = isEventBased();
+    const navLinks = allNavLinks.filter(l => !(eventBased && l.eventBasedHidden));
 
     async function logout() {
         const { getDb, resetDb } = await import("../db");
