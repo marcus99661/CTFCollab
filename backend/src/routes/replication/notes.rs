@@ -8,8 +8,8 @@ use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/replication/pull", post(pull))
-        .route("/replication/push", post(push))
+        .route("/replication/notes/pull", post(pull))
+        .route("/replication/notes/push", post(push))
 }
 
 async fn pull(
