@@ -37,36 +37,29 @@ export default function AdminPage() {
     }
 
     return (
-        <div style={{ padding: 32, maxWidth: 640, margin: "0 auto" }}>
-            <h2 style={{ color: "var(--text)", marginBottom: 20, fontSize: 18, fontWeight: 600 }}>Registered Users</h2>
+        <div className="p-8 max-w-[640px] mx-auto">
+            <h2 className="text-text mb-5 text-lg font-semibold">Registered Users</h2>
 
             {error && (
-                <p style={{ color: "var(--danger)", marginBottom: 16, fontSize: 13 }}>{error}</p>
+                <p className="text-danger mb-4 text-[13px]">{error}</p>
             )}
 
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="card p-0 overflow-hidden">
                 {users.length === 0 ? (
-                    <div className="empty-state" style={{ padding: 32 }}>No users found</div>
+                    <div className="empty-state p-8">No users found</div>
                 ) : (
                     users.map((u, i) => (
                         <div
                             key={u.id}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                padding: "12px 16px",
-                                borderBottom: i < users.length - 1 ? "1px solid var(--border)" : "none",
-                                gap: 12,
-                            }}
+                            className={`flex items-center px-4 py-3 gap-3 ${i < users.length - 1 ? "border-b border-border" : ""}`}
                         >
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>{u.name}</div>
-                                <div style={{ fontSize: 12, color: "var(--muted)" }}>{u.email}</div>
+                            <div className="flex-1">
+                                <div className="text-sm font-medium text-text">{u.name}</div>
+                                <div className="text-xs text-muted">{u.email}</div>
                             </div>
                             <button
-                                className="btn btn-danger"
+                                className="btn btn-danger text-xs px-3 py-1"
                                 onClick={() => deleteUser(u.id, u.name)}
-                                style={{ fontSize: 12, padding: "4px 12px" }}
                             >
                                 Delete
                             </button>

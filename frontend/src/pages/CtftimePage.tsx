@@ -19,10 +19,10 @@ function EventTable({ events, localMap, onImport }: {
     localMap: Map<number, string[]>;
     onImport: (event: CtftimeEvent) => void;
 }) {
-    if (events.length === 0) return <div className="empty-state">No events found.</div>;
+    if (events.length === 0) return <div className="text-muted text-sm py-8 text-center">No events found.</div>;
 
     return (
-        <div className="card" style={{ padding: 0 }}>
+        <div className="card p-0">
             <table className="table">
                 <thead>
                     <tr>
@@ -38,28 +38,28 @@ function EventTable({ events, localMap, onImport }: {
                         const localId = localMap.get(ev.id);
                         return (
                             <tr key={ev.id}>
-                                <td style={{ fontWeight: 500 }}>
+                                <td className="font-medium">
                                     <a className="accent-link" href={ev.url} target="_blank" rel="noreferrer">
                                         {ev.title}
                                     </a>
                                 </td>
-                                <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
+                                <td className="text-muted whitespace-nowrap">
                                     {formatDate(new Date(ev.start).getTime())}
                                 </td>
-                                <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
+                                <td className="text-muted whitespace-nowrap">
                                     {formatDate(new Date(ev.finish).getTime())}
                                 </td>
                                 <td>
                                     {localId && localId.length > 0
-                                        ? <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                        ? <span className="flex gap-2 flex-wrap">
                                             {localId.map((id, i) => (
                                                 <Link key={id} className="accent-link" to={`/events/${id}`}>View {localId.length > 1 ? i + 1 : ""}</Link>
                                             ))}
                                           </span>
-                                        : <span style={{ color: "var(--muted)", fontSize: 13 }}>-</span>
+                                        : <span className="text-muted text-[13px]">-</span>
                                     }
                                 </td>
-                                <td style={{ textAlign: "right" }}>
+                                <td className="text-right">
                                     <button className="btn btn-primary" onClick={() => onImport(ev)}>
                                         Import
                                     </button>
@@ -146,20 +146,18 @@ export default function CtftimePage() {
     }
 
     return (
-        <div style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-                <h2 className="page-title" style={{ margin: 0 }}>CTFtime events</h2>
-            </div>
+        <div className="max-w-[900px] mx-auto my-8 px-4">
+            <h2 className="text-text font-semibold text-xl m-0 mb-5">CTFtime events</h2>
 
-            {loading && <div className="empty-state">Loading...</div>}
-            {error && <div className="empty-state" style={{ color: "var(--danger)" }}>Failed to load: {error}</div>}
+            {loading && <div className="text-muted text-sm py-8 text-center">Loading...</div>}
+            {error && <div className="text-danger text-sm py-8 text-center">Failed to load: {error}</div>}
 
             {!loading && !error && (
                 <>
-                    <h3 style={{ fontSize: 14, fontWeight: 500, color: "var(--muted)", margin: "0 0 10px 0" }}>Running now</h3>
+                    <h3 className="text-sm font-medium text-muted m-0 mb-2.5">Running now</h3>
                     <EventTable events={running} localMap={localMap} onImport={importEvent} />
 
-                    <h3 style={{ fontSize: 14, fontWeight: 500, color: "var(--muted)", margin: "24px 0 10px 0" }}>Upcoming</h3>
+                    <h3 className="text-sm font-medium text-muted mt-6 mb-2.5">Upcoming</h3>
                     <EventTable events={upcoming} localMap={localMap} onImport={importEvent} />
                 </>
             )}

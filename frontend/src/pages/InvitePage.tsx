@@ -114,9 +114,9 @@ export default function InvitePage() {
 
     if (loadError) {
         return (
-            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-                <div className="card" style={{ width: 380, textAlign: "center" }}>
-                    <p style={{ color: "var(--danger)", margin: 0 }}>{loadError}</p>
+            <div className="min-h-screen flex items-center justify-center bg-bg">
+                <div className="card w-[380px] text-center">
+                    <p className="text-danger m-0">{loadError}</p>
                 </div>
             </div>
         );
@@ -124,26 +124,26 @@ export default function InvitePage() {
 
     if (!info) {
         return (
-            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-                <div style={{ color: "var(--muted)" }}>Loading...</div>
+            <div className="min-h-screen flex items-center justify-center bg-bg">
+                <div className="text-muted">Loading...</div>
             </div>
         );
     }
 
     return (
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-            <div className="overlay-box" style={{ width: 420 }}>
+        <div className="min-h-screen flex items-center justify-center bg-bg">
+            <div className="overlay-box w-[420px]">
                 <div className="overlay-box-header">
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>You've been invited to</div>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{info.event_name}</h2>
+                    <div className="text-xs text-muted mb-1">You've been invited to</div>
+                    <h2 className="m-0 text-lg font-semibold">{info.event_name}</h2>
                 </div>
                 <div className="overlay-box-body">
                     {alreadyLoggedIn ? (
                         <>
-                            <p style={{ margin: 0, fontSize: 14, color: "var(--muted)" }}>
+                            <p className="m-0 text-sm text-muted">
                                 You're already signed in. Click below to join the event.
                             </p>
-                            {error && <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>}
+                            {error && <p className="text-danger m-0 text-[13px]">{error}</p>}
                             <div className="form-actions">
                                 <button className="btn btn-primary" onClick={joinAsCurrentUser} disabled={loading}>
                                     {loading ? "Joining..." : "Join event"}
@@ -152,24 +152,16 @@ export default function InvitePage() {
                         </>
                     ) : (
                         <>
-                            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
+                            <div className="flex gap-0 border-b border-border mb-1">
                                 {(["register", "login"] as Tab[]).map(t => (
                                     <button
                                         key={t}
                                         onClick={() => { setTab(t); setError(null); }}
-                                        style={{
-                                            flex: 1,
-                                            padding: "8px 0",
-                                            background: "none",
-                                            border: "none",
-                                            borderBottom: tab === t ? "2px solid var(--accent)" : "2px solid transparent",
-                                            color: tab === t ? "var(--text)" : "var(--muted)",
-                                            cursor: "pointer",
-                                            fontSize: 13,
-                                            fontFamily: "inherit",
-                                            fontWeight: tab === t ? 600 : 400,
-                                            marginBottom: -1,
-                                        }}
+                                        className={`flex-1 py-2 bg-transparent border-0 border-b-2 cursor-pointer text-[13px] font-[inherit] -mb-px ${
+                                            tab === t
+                                                ? "border-accent text-text font-semibold"
+                                                : "border-transparent text-muted font-normal"
+                                        }`}
                                     >
                                         {t === "register" ? "Create account" : "Sign in"}
                                     </button>
@@ -195,7 +187,7 @@ export default function InvitePage() {
                                 />
                             </label>
 
-                            {error && <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>}
+                            {error && <p className="text-danger m-0 text-[13px]">{error}</p>}
 
                             <div className="form-actions">
                                 <button

@@ -6,7 +6,6 @@ import { startNotesAutoSync } from "../sync/notesSync";
 import { getCollabUser } from "../auth";
 import NoteEditor from "../components/NoteEditor";
 import "../styles/ui.css";
-import "../styles/ChallengeDetailPage.css";
 
 export default function ChallengeDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -99,37 +98,37 @@ export default function ChallengeDetailPage() {
     }
 
     if (!challenge) {
-        return <div className="empty-state">Challenge not found.</div>;
+        return <div className="text-muted text-sm py-8 text-center">Challenge not found.</div>;
     }
 
     return (
-        <div className="challenge-detail">
-            <div className="challenge-detail-header">
-                <Link to={`/events/${challenge.eventId}`} className="back-link">&lt; Back</Link>
-                <span className="challenge-detail-title">{challenge.title}</span>
+        <div className="flex flex-col h-[calc(100vh-52px)]">
+            <div className="px-5 py-2.5 border-b border-border flex items-center gap-4 shrink-0">
+                <Link to={`/events/${challenge.eventId}`} className="text-accent no-underline text-sm hover:underline">&lt; Back</Link>
+                <span className="font-semibold text-base text-text">{challenge.title}</span>
                 {challenge.category && (
-                    <span className="challenge-detail-category">{challenge.category}</span>
+                    <span className="text-xs text-muted">{challenge.category}</span>
                 )}
                 {challenge.points > 0 && (
                     <span className="points-badge">{challenge.points} pts</span>
                 )}
                 {challenge.url && (
-                    <a href={challenge.url} target="_blank" rel="noopener noreferrer" className="challenge-detail-link">
+                    <a href={challenge.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent ml-auto no-underline hover:underline">
                         link
                     </a>
                 )}
             </div>
 
-            <div className="challenge-detail-body">
-                <div className="challenge-side-panel">
-                    <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="flex-1 flex overflow-hidden gap-4 p-4">
+                <div className="w-[260px] shrink-0 overflow-auto border border-border rounded-md">
+                    <div className="p-3 flex flex-col gap-3">
                         {(() => {
                             const username = getCollabUser()?.name;
                             const solvers = challenge.solvers ?? [];
                             const isSolving = username ? solvers.includes(username) : false;
                             return !challenge.solved && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
-                                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                                <div className="flex flex-col gap-2 pb-3 border-b border-border">
+                                    <div className="text-xs text-muted">
                                         {solvers.length > 0 ? `Working on it: ${solvers.join(", ")}` : "Nobody working on this"}
                                     </div>
                                     {isSolving ? (
@@ -143,25 +142,16 @@ export default function ChallengeDetailPage() {
 
                         {challenge.solved ? (
                             <>
-                                <div style={{
-                                    background: "#3fb95022",
-                                    border: "1px solid #3fb950",
-                                    borderRadius: 6,
-                                    padding: "8px 12px",
-                                    color: "#3fb950",
-                                    fontWeight: 600,
-                                    fontSize: 14,
-                                }}>
+                                <div className="bg-success/10 border border-success rounded-md px-3 py-2 text-success font-semibold text-sm">
                                     ✓ Solved
                                 </div>
                                 {challenge.solvedBy && (
-                                    <div style={{ fontSize: 12, color: "var(--muted)" }}>by {challenge.solvedBy}</div>
+                                    <div className="text-xs text-muted">by {challenge.solvedBy}</div>
                                 )}
                                 <input
-                                    className="input"
+                                    className="input font-mono text-[13px]"
                                     readOnly
                                     value={challenge.flag ?? ""}
-                                    style={{ fontFamily: "monospace", fontSize: 13 }}
                                 />
                                 <button className="btn" onClick={unsolve}>Unsolve</button>
                             </>
@@ -170,12 +160,11 @@ export default function ChallengeDetailPage() {
                                 <label className="form-field">
                                     <span className="form-field-label">Flag</span>
                                     <input
-                                        className="input"
+                                        className="input font-mono text-[13px]"
                                         value={flagInput}
                                         onChange={e => setFlagInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === "Enter") markSolved(); }}
                                         placeholder="flag{...}"
-                                        style={{ fontFamily: "monospace", fontSize: 13 }}
                                         autoFocus
                                     />
                                 </label>
@@ -191,10 +180,10 @@ export default function ChallengeDetailPage() {
                     </div>
                 </div>
 
-                <div className="challenge-note-panel">
+                <div className="flex-1 overflow-auto border border-border rounded-md px-4 py-3">
                     {challenge.noteId
                         ? <NoteEditor key={challenge.noteId} noteId={challenge.noteId} />
-                        : <div className="empty-state">No note attached to this challenge.</div>
+                        : <div className="text-muted text-sm py-8 text-center">No note attached to this challenge.</div>
                     }
                 </div>
             </div>

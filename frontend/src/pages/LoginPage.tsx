@@ -50,23 +50,16 @@ export default function LoginPage() {
     }
 
     return (
-        <div style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100vh",
-            background: "var(--bg)",
-        }}>
-            <div style={{ width: 320 }}>
-                <h2 style={{ color: "var(--text)", fontWeight: 600, fontSize: 20, marginBottom: 20 }}>
+        <div className="flex justify-center items-center h-screen bg-bg">
+            <div className="w-80">
+                <h2 className="text-text font-semibold text-xl mb-5">
                     {mode === "login" ? "Sign in" : "Create account"}
                 </h2>
 
                 <div className="card">
-                    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
                         <input
-                            className="input"
-                            style={{ width: "100%" }}
+                            className="input w-full"
                             placeholder="Username"
                             value={username}
                             onChange={e => setUsername(e.target.value)}
@@ -74,8 +67,7 @@ export default function LoginPage() {
                         />
                         {mode === "register" && (
                             <input
-                                className="input"
-                                style={{ width: "100%" }}
+                                className="input w-full"
                                 placeholder="Email"
                                 type="email"
                                 value={email}
@@ -84,8 +76,7 @@ export default function LoginPage() {
                             />
                         )}
                         <input
-                            className="input"
-                            style={{ width: "100%" }}
+                            className="input w-full"
                             placeholder="Password"
                             type="password"
                             value={password}
@@ -94,8 +85,7 @@ export default function LoginPage() {
                         />
                         {mode === "register" && (
                             <input
-                                className="input"
-                                style={{ width: "100%" }}
+                                className="input w-full"
                                 placeholder="Confirm password"
                                 type="password"
                                 value={confirmPassword}
@@ -105,21 +95,20 @@ export default function LoginPage() {
                         )}
 
                         {error && (
-                            <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>
+                            <p className="text-danger m-0 text-[13px]">{error}</p>
                         )}
 
                         <button
-                            className="btn btn-primary"
+                            className="btn btn-primary w-full mt-1"
                             type="submit"
                             disabled={loading}
-                            style={{ width: "100%", marginTop: 4 }}
                         >
                             {loading ? "..." : mode === "login" ? "Sign in" : "Register"}
                         </button>
                     </form>
                 </div>
 
-                <p style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}>
+                <p className="mt-3.5 text-[13px] text-muted">
                     {mode === "login" ? (
                         <>No account? <a href="#" onClick={e => { e.preventDefault(); setMode("register"); setError(null); }}>Register</a></>
                     ) : (

@@ -7,7 +7,6 @@ import { startNotesAutoSync } from "../sync/notesSync";
 import { makeId } from "../utils";
 import { authFetch, getUserIdFromToken } from "../auth";
 import "../styles/ui.css";
-import "../styles/EventDetailPage.css";
 
 type Member = { user_id: string; username: string; role: string };
 
@@ -94,12 +93,12 @@ function InviteOverlay({ eventId, onClose }: { eventId: string; onClose: () => v
 
     return (
         <div className="overlay" onClick={onClose}>
-            <div className="overlay-box" onClick={e => e.stopPropagation()} style={{ width: 480 }}>
+            <div className="overlay-box w-[480px]" onClick={e => e.stopPropagation()}>
                 <div className="overlay-box-header">
-                    <h5 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Invite link</h5>
+                    <h5 className="m-0 text-[15px] font-semibold">Invite link</h5>
                 </div>
                 <div className="overlay-box-body">
-                    {invite === undefined && <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading...</div>}
+                    {invite === undefined && <div className="text-muted text-[13px]">Loading...</div>}
 
                     {invite === null && (
                         <>
@@ -109,16 +108,16 @@ function InviteOverlay({ eventId, onClose }: { eventId: string; onClose: () => v
                             </label>
                             <div className="form-field">
                                 <span className="form-field-label">Expires in<span className="form-field-optional">(optional)</span></span>
-                                <div style={{ display: "flex", gap: 8 }}>
-                                    <input className="input" type="number" value={expiresHours} onChange={e => setExpiresHours(e.target.value)} placeholder="Hours" style={{ flex: 1 }} />
-                                    <input className="input" type="number" value={expiresMinutes} onChange={e => setExpiresMinutes(e.target.value)} placeholder="Minutes" style={{ flex: 1 }} />
+                                <div className="flex gap-2">
+                                    <input className="input flex-1" type="number" value={expiresHours} onChange={e => setExpiresHours(e.target.value)} placeholder="Hours" />
+                                    <input className="input flex-1" type="number" value={expiresMinutes} onChange={e => setExpiresMinutes(e.target.value)} placeholder="Minutes" />
                                 </div>
                             </div>
-                            <label className="form-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <label className="form-field flex-row items-center gap-2">
                                 <input type="checkbox" checked={eventBased} onChange={e => setEventBased(e.target.checked)} />
-                                <span title="Account can only access events they were invited to. Cannot create new events." style={{ fontSize: 13, cursor: "help", borderBottom: "1px dotted var(--muted)" }}>Event-based account</span>
+                                <span title="Account can only access events they were invited to. Cannot create new events." className="text-[13px] cursor-help border-b border-dotted border-muted">Event-based account</span>
                             </label>
-                            {error && <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>}
+                            {error && <p className="text-danger m-0 text-[13px]">{error}</p>}
                             <div className="form-actions">
                                 <button className="btn btn-primary" onClick={createInvite}>Create invite</button>
                                 <button className="btn" onClick={onClose}>Cancel</button>
@@ -130,39 +129,38 @@ function InviteOverlay({ eventId, onClose }: { eventId: string; onClose: () => v
                         <>
                             <div className="form-field">
                                 <span className="form-field-label">Link</span>
-                                <div style={{ display: "flex", gap: 8 }}>
+                                <div className="flex gap-2">
                                     <input
-                                        className="input"
+                                        className="input flex-1"
                                         readOnly
                                         value={`${window.location.origin}/invite/${invite.token}`}
-                                        style={{ flex: 1, cursor: "text" }}
                                     />
                                     <button className="btn" onClick={copyLink}>
                                         {copied ? "Copied!" : "Copy"}
                                     </button>
                                 </div>
                             </div>
-                            <div style={{ fontSize: 13, color: "var(--muted)", display: "flex", gap: 16 }}>
+                            <div className="text-[13px] text-muted flex gap-4">
                                 <span>Uses: {invite.uses}{invite.max_uses != null ? ` / ${invite.max_uses}` : ""}</span>
                                 {invite.expires_at && <span>{formatExpiry(invite.expires_at)}</span>}
                                 <span>{invite.event_based ? "Event-based" : "Full account"}</span>
                             </div>
 
                             {joins.length > 0 && (
-                                <div className="panel" style={{ marginTop: 4 }}>
+                                <div className="panel mt-1">
                                     <div className="panel-header">Joined via invite</div>
-                                    <div className="panel-body" style={{ gap: 6 }}>
+                                    <div className="panel-body gap-1.5">
                                         {joins.map((j, i) => (
-                                            <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                                            <div key={i} className="flex justify-between text-[13px]">
                                                 <span>{j.username}</span>
-                                                <span style={{ color: "var(--muted)" }}>{new Date(j.joined_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", hour12: false })}</span>
+                                                <span className="text-muted">{new Date(j.joined_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", hour12: false })}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
 
-                            <div className="form-actions" style={{ marginTop: 4 }}>
+                            <div className="form-actions mt-1">
                                 <button className="btn btn-danger" onClick={deleteInvite}>Delete invite</button>
                                 <button className="btn" onClick={onClose}>Close</button>
                             </div>
@@ -242,24 +240,24 @@ function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => voi
 
     return (
         <div
-            className="challenge-card"
+            className="rounded-md p-3.5 flex flex-col gap-2 cursor-pointer"
             onClick={() => navigate(`/challenges/${ch.id}`)}
             style={{
                 background: statusBg,
                 borderLeft: `4px solid ${color}`,
             }}
         >
-            <div className="challenge-card-title">{ch.title}</div>
-            <div className="challenge-card-meta">
+            <div className="text-[15px] font-semibold text-text leading-tight">{ch.title}</div>
+            <div className="text-[13px]">
                 {ch.points ? <span style={{ color, fontWeight: 600 }}>{ch.points} pts</span> : null}
             </div>
             {ch.solved && ch.solvedBy && (
-                <div style={{ color: "var(--muted)", fontSize: 12 }}>by {ch.solvedBy}</div>
+                <div className="text-muted text-xs">by {ch.solvedBy}</div>
             )}
             {!ch.solved && ch.solvers && ch.solvers.length > 0 && (
-                <div style={{ color: "var(--muted)", fontSize: 12 }}>{ch.solvers.join(", ")}</div>
+                <div className="text-muted text-xs">{ch.solvers.join(", ")}</div>
             )}
-            <div className="challenge-card-footer">
+            <div className="flex gap-2 flex-wrap mt-auto">
                 {ch.url && (
                     <a
                         href={ch.url}
@@ -272,8 +270,7 @@ function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => voi
                     </a>
                 )}
                 <button
-                    className="btn-text"
-                    style={{ marginLeft: "auto" }}
+                    className="btn-text ml-auto"
                     onClick={e => { e.stopPropagation(); onDelete(); }}
                 >
                     delete
@@ -302,7 +299,7 @@ function AddChallengeOverlay({ onClose, onAdd }: {
         <div className="overlay" onClick={onClose}>
             <div className="overlay-box" onClick={e => e.stopPropagation()}>
                 <div className="overlay-box-header">
-                    <h5 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>New challenge</h5>
+                    <h5 className="m-0 text-[15px] font-semibold">New challenge</h5>
                 </div>
                 <div className="overlay-box-body">
                     <label className="form-field">
@@ -443,7 +440,6 @@ export default function EventDetailPage() {
         }
     }
 
-
     async function fetchMembers() {
         if (!id) return;
         try {
@@ -491,15 +487,15 @@ export default function EventDetailPage() {
     const owner = members.find(m => m.role === "owner");
 
     return (
-        <div className="event-page">
-            <div style={{ marginBottom: 20 }}>
-                <Link to="/events" className="back-link">&lt; Events</Link>
+        <div className="max-w-[1100px] mx-auto my-8 px-6">
+            <div className="mb-5">
+                <Link to="/events" className="text-accent no-underline text-sm hover:underline">&lt; Events</Link>
             </div>
 
             {event ? (
                 <>
-                    <div className="event-page-header">
-                        <h1 className="event-page-title">{event.name}</h1>
+                    <div className="flex items-baseline gap-4 mb-5">
+                        <h1 className="m-0 text-[22px] font-bold flex-1">{event.name}</h1>
                         {effectiveRole === "owner" && (
                             <button className="btn" onClick={() => setShowInvite(true)}>
                                 Invite link
@@ -510,20 +506,20 @@ export default function EventDetailPage() {
                         </button>
                     </div>
 
-                    <div className="event-info-row">
+                    <div className="flex gap-5 flex-wrap mb-6 text-sm text-muted">
                         {countdown && <span>{countdown}</span>}
                         {owner && <span>Created by {owner.username}</span>}
                         <span>{challenges.length} challenges</span>
                         {totalPoints > 0 && <span>{totalPoints} pts total</span>}
                     </div>
 
-                    <div className="panel" style={{ marginBottom: 20 }}>
+                    <div className="panel mb-5">
                         <div className="panel-header">Members ({members.length})</div>
                         <div className="panel-body">
                             {members.map(m => (
-                                <div key={m.user_id} className="member-row">
-                                    <span className="member-name">{m.username}</span>
-                                    <span className={`member-role ${m.role === "owner" ? "member-role--owner" : ""}`}>
+                                <div key={m.user_id} className="flex items-center gap-2.5">
+                                    <span className="text-sm flex-1">{m.username}</span>
+                                    <span className={`text-xs ${m.role === "owner" ? "text-accent" : "text-muted"}`}>
                                         {m.role}
                                     </span>
                                     {effectiveRole === "owner" && m.user_id !== myUserId && (
@@ -535,9 +531,9 @@ export default function EventDetailPage() {
                             ))}
 
                             {effectiveRole === "owner" && (
-                                <div className="invite-row">
+                                <div className="flex gap-2 mt-1 border-t border-border pt-2.5">
                                     <input
-                                        className="input"
+                                        className="input flex-1"
                                         value={inviteUsername}
                                         onChange={e => setInviteUsername(e.target.value)}
                                         onKeyDown={e => { if (e.key === "Enter") inviteMember(); }}
@@ -548,28 +544,26 @@ export default function EventDetailPage() {
                                     </button>
                                 </div>
                             )}
-                            {inviteError && <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{inviteError}</p>}
+                            {inviteError && <p className="text-danger m-0 text-[13px]">{inviteError}</p>}
                         </div>
                     </div>
 
-                    <div style={{ marginBottom: 20 }}>
-                        <div className="status-bar">
-                            <span className="dot" />
-                            <span>{syncStatus}</span>
-                        </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted mb-5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted inline-block shrink-0" />
+                        <span>{syncStatus}</span>
                     </div>
 
                     {challenges.length === 0 ? (
-                        <div className="empty-state">No challenges yet.</div>
+                        <div className="text-muted text-sm py-8 text-center">No challenges yet.</div>
                     ) : (
                         Object.entries(byCategory)
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([cat, chals]) => (
-                                <div key={cat} className="category-section">
-                                    <h2 className="category-heading" style={{ color: categoryColor(cat) }}>
+                                <div key={cat} className="mb-8">
+                                    <h2 className="m-0 mb-3 text-base font-semibold capitalize" style={{ color: categoryColor(cat) }}>
                                         {cat}
                                     </h2>
-                                    <div className="challenge-grid">
+                                    <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
                                         {chals.map(ch => (
                                             <ChallengeCard key={ch.id} ch={ch} onDelete={() => deleteChallenge(ch.id)} />
                                         ))}
@@ -579,7 +573,7 @@ export default function EventDetailPage() {
                     )}
                 </>
             ) : (
-                <div className="empty-state">Event not found.</div>
+                <div className="text-muted text-sm py-8 text-center">Event not found.</div>
             )}
 
             {showForm && (

@@ -25,7 +25,7 @@ function AddEventOverlay({ onClose, onAdd }: {
         <div className="overlay" onClick={onClose}>
             <div className="overlay-box" onClick={e => e.stopPropagation()}>
                 <div className="overlay-box-header">
-                    <h5 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>New event</h5>
+                    <h5 className="m-0 text-[15px] font-semibold">New event</h5>
                 </div>
                 <div className="overlay-box-body">
                     <label className="form-field">
@@ -130,27 +130,25 @@ export default function EventsPage() {
     }
 
     return (
-        <div style={{ maxWidth: 900, margin: "32px auto", padding: "0 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-                <h2 className="page-title" style={{ margin: 0 }}>Events</h2>
+        <div className="max-w-[900px] mx-auto my-8 px-4">
+            <div className="flex items-center mb-5">
+                <h2 className="text-text font-semibold text-xl m-0">Events</h2>
                 {!isEventBased() && (
-                    <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ marginLeft: "auto" }}>
+                    <button className="btn btn-primary ml-auto" onClick={() => setShowForm(true)}>
                         New event
                     </button>
                 )}
             </div>
 
-            <div style={{ marginBottom: 12 }}>
-                <div className="status-bar">
-                    <span className="dot" />
-                    <span>{status}</span>
-                </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted inline-block shrink-0" />
+                <span>{status}</span>
             </div>
 
             {events.length === 0 ? (
-                <div className="empty-state">No events yet.</div>
+                <div className="text-muted text-sm py-8 text-center">No events yet.</div>
             ) : (
-                <div className="card" style={{ padding: 0 }}>
+                <div className="card p-0">
                     <table className="table">
                         <thead>
                             <tr>
@@ -165,14 +163,14 @@ export default function EventsPage() {
                             {events.map((ev) => (
                                 <tr
                                     key={ev.id}
-                                    style={{ cursor: "pointer" }}
+                                    className="cursor-pointer"
                                     onClick={() => navigate(`/events/${ev.id}`)}
                                 >
-                                    <td style={{ fontWeight: 500 }}>{ev.name}</td>
-                                    <td style={{ color: "var(--muted)" }}>{ev.description || "-"}</td>
-                                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{formatDate(ev.startAt)}</td>
-                                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{formatDate(ev.endAt)}</td>
-                                    <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                                    <td className="font-medium">{ev.name}</td>
+                                    <td className="text-muted">{ev.description || "-"}</td>
+                                    <td className="text-muted whitespace-nowrap">{formatDate(ev.startAt)}</td>
+                                    <td className="text-muted whitespace-nowrap">{formatDate(ev.endAt)}</td>
+                                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
                                         {ev.createdBy === getUserIdFromToken() && (
                                             <button className="btn btn-danger" onClick={() => deleteEvent(ev.id)}>
                                                 Delete

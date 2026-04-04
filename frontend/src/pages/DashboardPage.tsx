@@ -6,7 +6,6 @@ import { startChallengesAutoSync } from "../sync/challengesSync";
 import { formatDate } from "../utils";
 import { isEventBased } from "../auth";
 import "../styles/ui.css";
-import "../styles/DashboardPage.css";
 
 type EventGroup = "active" | "upcoming" | "ended" | "nodate";
 
@@ -26,9 +25,9 @@ function classifyEvent(ev: EventDoc, now: number): EventGroup {
 
 function StatCard({ label, value, bg }: { label: string; value: number; bg: string }) {
     return (
-        <div className="stat-card" style={{ background: bg }}>
-            <div className="stat-card-label">{label}</div>
-            <div className="stat-card-value">{value}</div>
+        <div className="flex-[1_1_140px] rounded-md text-center overflow-hidden text-white" style={{ background: bg }}>
+            <div className="py-2 border-b border-white/20 text-[13px] font-semibold">{label}</div>
+            <div className="py-4 text-[32px] font-bold">{value}</div>
         </div>
     );
 }
@@ -85,24 +84,24 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="dashboard-page">
-            <h2 className="page-title">Dashboard</h2>
+        <div className="max-w-[1100px] mx-auto my-8 px-6">
+            <h2 className="text-text font-semibold text-xl m-0 mb-5">Dashboard</h2>
 
-            <div className="stat-cards">
+            <div className="flex gap-3 flex-wrap mb-7">
                 <StatCard label="Events" value={events.length} bg="#4cb4c7" />
                 <StatCard label="Currently Active" value={active.length} bg="#e66e12" />
                 <StatCard label="Upcoming" value={upcoming.length} bg="#7abecc" />
                 <StatCard label="Challenges" value={challenges.length} bg="#018789" />
             </div>
 
-            <div className="dashboard-columns">
+            <div className="flex gap-6 flex-wrap items-start">
 
-                <div className="dashboard-col-left">
-                    <h5 className="section-heading">Current</h5>
-                    <hr style={{ marginBottom: 16 }} />
+                <div className="flex-[1_1_280px] min-w-0">
+                    <h5 className="text-text m-0 mb-2 text-sm font-semibold">Current</h5>
+                    <hr className="mb-4" />
 
                     {active.length === 0 && upcoming.length === 0 ? (
-                        <div style={{ color: "var(--muted)", fontSize: 14 }}>No active or upcoming events.</div>
+                        <div className="text-muted text-sm">No active or upcoming events.</div>
                     ) : (
                         [...active, ...upcoming].map(ev => {
                             const group = classifyEvent(ev, now);
@@ -110,15 +109,15 @@ export default function DashboardPage() {
                             return (
                                 <div
                                     key={ev.id}
-                                    className="event-card"
+                                    className="bg-surface border border-border rounded-md px-4 py-3 mb-2 cursor-pointer hover:bg-surface-2"
                                     onClick={() => navigate(`/events/${ev.id}`)}
                                     style={{ borderLeft: `3px solid ${color}` }}
                                 >
-                                    <div className="event-card-name">{ev.name}</div>
-                                    <div className="event-card-meta">
+                                    <div className="font-semibold text-sm text-text mb-1">{ev.name}</div>
+                                    <div className="text-xs text-muted flex gap-4 flex-wrap">
                                         {ev.startAt && <span>Start: {formatDate(ev.startAt)}</span>}
                                         {ev.endAt && <span>End: {formatDate(ev.endAt)}</span>}
-                                        <span style={{ marginLeft: "auto" }}>{challengeCount(ev.id)} challenges</span>
+                                        <span className="ml-auto">{challengeCount(ev.id)} challenges</span>
                                     </div>
                                 </div>
                             );
@@ -126,25 +125,25 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                <div className="dashboard-col-right">
-                    <h5 className="section-heading">Events</h5>
-                    <hr style={{ marginBottom: 12 }} />
+                <div className="flex-[2_1_380px] min-w-0">
+                    <h5 className="text-text m-0 mb-2 text-sm font-semibold">Events</h5>
+                    <hr className="mb-3" />
 
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <div className="flex gap-2 mb-3">
                         {!isEventBased() && (
-                            <Link to="/events" className="btn btn-primary" style={{ textDecoration: "none" }}>
+                            <Link to="/events" className="btn btn-primary no-underline">
                                 Create Event
                             </Link>
                         )}
-                        <Link to="/events" className="btn" style={{ textDecoration: "none" }}>
+                        <Link to="/events" className="btn no-underline">
                             View All
                         </Link>
                     </div>
 
                     {allSorted.length === 0 ? (
-                        <div style={{ color: "var(--muted)", fontSize: 14 }}>No events yet.</div>
+                        <div className="text-muted text-sm">No events yet.</div>
                     ) : (
-                        <div className="card" style={{ padding: 0 }}>
+                        <div className="card p-0">
                             <table className="table">
                                 <thead>
                                     <tr>
@@ -157,10 +156,10 @@ export default function DashboardPage() {
                                     {allSorted.map(ev => {
                                         const group = classifyEvent(ev, now);
                                         return (
-                                            <tr key={ev.id} onClick={() => navigate(`/events/${ev.id}`)} style={{ cursor: "pointer" }}>
-                                                <td style={{ fontWeight: 500 }}>{ev.name}</td>
+                                            <tr key={ev.id} onClick={() => navigate(`/events/${ev.id}`)} className="cursor-pointer">
+                                                <td className="font-medium">{ev.name}</td>
                                                 <td><b style={{ color: EVENT_STATUS[group].color }}>{EVENT_STATUS[group].label}</b></td>
-                                                <td style={{ color: "var(--muted)" }}>{challengeCount(ev.id)}</td>
+                                                <td className="text-muted">{challengeCount(ev.id)}</td>
                                             </tr>
                                         );
                                     })}
