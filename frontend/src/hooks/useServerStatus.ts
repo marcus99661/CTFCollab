@@ -4,7 +4,7 @@ export type ServerStatus = "online" | "unstable" | "offline";
 
 const PING_INTERVAL_MS = 12_000;
 const PING_TIMEOUT_MS = 5_000;
-const UNSTABLE_THRESHOLD = 1;
+const UNSTABLE_THRESHOLD = 2;
 
 async function ping(): Promise<boolean> {
     const controller = new AbortController();

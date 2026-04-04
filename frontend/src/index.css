@@ -1,11 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0e0d0c;
+  --color-surface: #1a1918;
+  --color-surface-2: #222120;
+  --color-border: #2e2d2b;
+  --color-text: #e6edf3;
+  --color-muted: #7a8a8f;
+  --color-accent: #4cb4c7;
+  --color-navbar: #010305;
+  --color-danger: #f85149;
+  --color-success: #3fb950;
+  --color-warning: #e66e12;
+}
+
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: dark;
-  color: #e6edf3;
-  background-color: #0e0d0c;
+  color: var(--color-text);
+  background-color: var(--color-bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,11 +37,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #0e0d0c;
+  background: var(--color-bg);
 }
 
 a {
-  color: #4cb4c7;
+  color: var(--color-accent);
   text-decoration: none;
 }
 a:hover {
