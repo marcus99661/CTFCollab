@@ -110,11 +110,10 @@ async fn get_invite(
 ) -> Result<Json<Option<EventInvite>>, AppError> {
     require_owner(&state.db, &event_id, &auth.user_id).await?;
 
-    let invite = sqlx::query_as!(
-        EventInvite,
-        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE event_id = $1",
-        event_id
+    let invite = sqlx::query_as::<_, EventInvite>(
+        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE event_id = $1"
     )
+    .bind(&event_id)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -146,18 +145,17 @@ async fn create_invite(
     let expires_at = body.expires_in_minutes.map(|m| now_ms() + m * 60 * 1000);
     let now = now_ms();
 
-    let invite = sqlx::query_as!(
-        EventInvite,
+    let invite = sqlx::query_as::<_, EventInvite>(
         "INSERT INTO event_invites (token, event_id, max_uses, uses, expires_at, event_based, created_at)
          VALUES ($1, $2, $3, 0, $4, $5, $6)
-         RETURNING token, event_id, max_uses, uses, expires_at, event_based, created_at",
-        token,
-        event_id,
-        body.max_uses,
-        expires_at,
-        body.event_based,
-        now
+         RETURNING token, event_id, max_uses, uses, expires_at, event_based, created_at"
     )
+    .bind(&token)
+    .bind(&event_id)
+    .bind(body.max_uses)
+    .bind(expires_at)
+    .bind(body.event_based)
+    .bind(now)
     .fetch_one(&state.db)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -246,11 +244,10 @@ async fn join_via_invite(
     State(state): State<AppState>,
     Path(token): Path<String>,
 ) -> Result<(), AppError> {
-    let invite = sqlx::query_as!(
-        EventInvite,
-        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1",
-        token
+    let invite = sqlx::query_as::<_, EventInvite>(
+        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1"
     )
+    .bind(&token)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?
@@ -305,11 +302,10 @@ async fn register_via_invite(
     Path(token): Path<String>,
     Json(body): Json<RegisterViaInviteBody>,
 ) -> Result<Json<AuthResponse>, AppError> {
-    let invite = sqlx::query_as!(
-        EventInvite,
-        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1",
-        token
+    let invite = sqlx::query_as::<_, EventInvite>(
+        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1"
     )
+    .bind(&token)
     .fetch_optional(&state.db)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?

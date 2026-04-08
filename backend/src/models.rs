@@ -68,6 +68,8 @@ pub struct ChallengeDoc {
     pub flag: Option<String>,
     pub solved_by: Option<String>,
     pub solvers: Vec<String>,
+    pub description: String,
+    pub ctfd_id: Option<i32>,
 }
 
 /*

@@ -21,40 +21,34 @@ async fn pull(
 
     let docs: Vec<NoteDoc> = match req.checkpoint.clone() {
         None => {
-            sqlx::query_as!(
-                NoteDoc,
-                r#"
-                SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted
-                FROM notes n
-                JOIN challenges c ON c.note_id = n.id
-                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
-                ORDER BY n.updated_at ASC, n.id ASC
-                LIMIT $2
-                "#,
-                auth.user_id,
-                limit
+            sqlx::query_as::<_, NoteDoc>(
+                "SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted
+                 FROM notes n
+                 JOIN challenges c ON c.note_id = n.id
+                 JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
+                 ORDER BY n.updated_at ASC, n.id ASC
+                 LIMIT $2"
             )
+            .bind(&auth.user_id)
+            .bind(limit)
             .fetch_all(&state.db)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
         }
         Some(cp) => {
-            sqlx::query_as!(
-                NoteDoc,
-                r#"
-                SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted
-                FROM notes n
-                JOIN challenges c ON c.note_id = n.id
-                JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
-                WHERE (n.updated_at > $2) OR (n.updated_at = $2 AND n.id > $3)
-                ORDER BY n.updated_at ASC, n.id ASC
-                LIMIT $4
-                "#,
-                auth.user_id,
-                cp.updated_at,
-                cp.id,
-                limit
+            sqlx::query_as::<_, NoteDoc>(
+                "SELECT DISTINCT n.id, n.title, n.updated_at, n.is_deleted
+                 FROM notes n
+                 JOIN challenges c ON c.note_id = n.id
+                 JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
+                 WHERE (n.updated_at > $2) OR (n.updated_at = $2 AND n.id > $3)
+                 ORDER BY n.updated_at ASC, n.id ASC
+                 LIMIT $4"
             )
+            .bind(&auth.user_id)
+            .bind(cp.updated_at)
+            .bind(&cp.id)
+            .bind(limit)
             .fetch_all(&state.db)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
@@ -92,16 +86,14 @@ async fn push(
         // If the note is already linked to a challenge, the user must be a member of that event.
         // If it's not linked yet (newly created), allow through.
         let is_linked_but_not_member = sqlx::query_scalar::<_, bool>(
-            r#"
-            SELECT EXISTS(
+            "SELECT EXISTS(
                 SELECT 1 FROM challenges c
                 WHERE c.note_id = $1
                 AND NOT EXISTS(
                     SELECT 1 FROM event_members em
                     WHERE em.event_id = c.event_id AND em.user_id = $2
                 )
-            )
-            "#,
+            )"
         )
         .bind(&incoming.id)
         .bind(&auth.user_id)
@@ -113,37 +105,29 @@ async fn push(
             return Err(AppError::Forbidden);
         }
 
-        let applied: Option<NoteDoc> = sqlx::query_as!(
-            NoteDoc,
-            r#"
-            INSERT INTO notes (id, title, updated_at, is_deleted)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (id) DO UPDATE
-            SET title      = EXCLUDED.title,
-                updated_at = EXCLUDED.updated_at,
-                is_deleted = EXCLUDED.is_deleted
-            WHERE EXCLUDED.updated_at >= notes.updated_at
-            RETURNING id, title, updated_at, is_deleted
-            "#,
-            incoming.id,
-            incoming.title,
-            incoming.updated_at,
-            incoming.is_deleted
+        let applied: Option<NoteDoc> = sqlx::query_as::<_, NoteDoc>(
+            "INSERT INTO notes (id, title, updated_at, is_deleted)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (id) DO UPDATE
+             SET title = EXCLUDED.title,
+                 updated_at = EXCLUDED.updated_at,
+                 is_deleted = EXCLUDED.is_deleted
+             WHERE EXCLUDED.updated_at >= notes.updated_at
+             RETURNING id, title, updated_at, is_deleted"
         )
+        .bind(&incoming.id)
+        .bind(&incoming.title)
+        .bind(incoming.updated_at)
+        .bind(incoming.is_deleted)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if applied.is_none() {
-            let server_doc: Option<NoteDoc> = sqlx::query_as!(
-                NoteDoc,
-                r#"
-                SELECT id, title, updated_at, is_deleted
-                FROM notes
-                WHERE id = $1
-                "#,
-                incoming.id
+            let server_doc: Option<NoteDoc> = sqlx::query_as::<_, NoteDoc>(
+                "SELECT id, title, updated_at, is_deleted FROM notes WHERE id = $1"
             )
+            .bind(&incoming.id)
             .fetch_optional(&state.db)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;

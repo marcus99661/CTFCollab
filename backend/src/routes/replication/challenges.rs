@@ -23,7 +23,7 @@ async fn pull(
     let docs: Vec<ChallengeDoc> = match req.checkpoint.clone() {
         None => {
             sqlx::query_as::<_, ChallengeDoc>(
-                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers
+                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers, c.description, c.ctfd_id
                  FROM challenges c
                  JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
                  ORDER BY GREATEST(c.updated_at, em.joined_at) ASC, c.id ASC
@@ -37,7 +37,7 @@ async fn pull(
         }
         Some(cp) => {
             sqlx::query_as::<_, ChallengeDoc>(
-                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers
+                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers, c.description, c.ctfd_id
                  FROM challenges c
                  JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $3
                  WHERE GREATEST(c.updated_at, em.joined_at) > $1
@@ -112,26 +112,26 @@ async fn push(
         }
 
         let applied: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(
-            r#"
-            INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            ON CONFLICT (id) DO UPDATE
-            SET event_id   = EXCLUDED.event_id,
-                title      = EXCLUDED.title,
-                category   = EXCLUDED.category,
-                points     = EXCLUDED.points,
-                url        = EXCLUDED.url,
-                created_at = EXCLUDED.created_at,
-                updated_at = EXCLUDED.updated_at,
-                is_deleted = EXCLUDED.is_deleted,
-                note_id    = EXCLUDED.note_id,
-                solved     = EXCLUDED.solved,
-                flag       = EXCLUDED.flag,
-                solved_by  = EXCLUDED.solved_by,
-                solvers    = EXCLUDED.solvers
-            WHERE EXCLUDED.updated_at >= challenges.updated_at
-            RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers
-            "#
+            "INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+             ON CONFLICT (id) DO UPDATE
+             SET event_id = EXCLUDED.event_id,
+                 title = EXCLUDED.title,
+                 category = EXCLUDED.category,
+                 points = EXCLUDED.points,
+                 url = EXCLUDED.url,
+                 created_at = EXCLUDED.created_at,
+                 updated_at = EXCLUDED.updated_at,
+                 is_deleted = EXCLUDED.is_deleted,
+                 note_id = EXCLUDED.note_id,
+                 solved = EXCLUDED.solved,
+                 flag = EXCLUDED.flag,
+                 solved_by = EXCLUDED.solved_by,
+                 solvers = EXCLUDED.solvers,
+                 description = EXCLUDED.description,
+                 ctfd_id = EXCLUDED.ctfd_id
+             WHERE EXCLUDED.updated_at >= challenges.updated_at
+             RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id"
         )
         .bind(&incoming.id)
         .bind(&incoming.event_id)
@@ -147,13 +147,15 @@ async fn push(
         .bind(&incoming.flag)
         .bind(&incoming.solved_by)
         .bind(&incoming.solvers)
+        .bind(&incoming.description)
+        .bind(incoming.ctfd_id)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if applied.is_none() {
             let server_doc: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(
-                "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers
+                "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id
                  FROM challenges WHERE id = $1"
             )
             .bind(&incoming.id)
