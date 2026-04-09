@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getDb, type ChallengeDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
-import { getCollabUser } from "../auth";
+import { getCollabUser, authFetch } from "../auth";
 import NoteEditor from "../components/NoteEditor";
 import "../styles/ui.css";
 
@@ -11,6 +11,8 @@ export default function ChallengeDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [challenge, setChallenge] = useState<ChallengeDoc | null>(null);
     const [flagInput, setFlagInput] = useState("");
+    const [syncing, setSyncing] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -97,6 +99,30 @@ export default function ChallengeDetailPage() {
         setFlagInput("");
     }
 
+    async function syncFromCtfd() {
+        if (!challenge?.ctfdId) return;
+        setSyncing(true);
+        setSyncError(null);
+        try {
+            const res = await authFetch(`/api/events/${challenge.eventId}/ctfd/challenges/${challenge.ctfdId}`);
+            const json = await res.json();
+            if (!res.ok) { setSyncError(json.error ?? "Failed to sync"); return; }
+            const db = await getDb();
+            const doc = await db.challenges.findOne(id).exec();
+            if (!doc) return;
+            await doc.patch({
+                points: json.value,
+                description: json.description,
+                category: json.category,
+                updatedAt: Date.now(),
+            });
+        } catch (e: any) {
+            setSyncError(e.message);
+        } finally {
+            setSyncing(false);
+        }
+    }
+
     if (!challenge) {
         return <div className="text-muted text-sm py-8 text-center">Challenge not found.</div>;
     }
@@ -112,16 +138,27 @@ export default function ChallengeDetailPage() {
                 {challenge.points > 0 && (
                     <span className="points-badge">{challenge.points} pts</span>
                 )}
-                {challenge.url && (
-                    <a href={challenge.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent ml-auto no-underline hover:underline">
-                        link
-                    </a>
-                )}
+                <div className="ml-auto flex items-center gap-3">
+                    {challenge.ctfdId && (
+                        <button className="btn" onClick={syncFromCtfd} disabled={syncing}>
+                            {syncing ? "Syncing..." : "Sync from CTFd"}
+                        </button>
+                    )}
+                    {challenge.url && (
+                        <a href={challenge.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent no-underline hover:underline">
+                            link
+                        </a>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 flex overflow-hidden gap-4 p-4">
                 <div className="w-[260px] shrink-0 overflow-auto border border-border rounded-md">
                     <div className="p-3 flex flex-col gap-3">
+                        {syncError && <p className="text-danger text-[13px] m-0">{syncError}</p>}
+                        {challenge.description && (
+                            <div className="text-[13px] text-text whitespace-pre-wrap border-b border-border pb-3">{challenge.description}</div>
+                        )}
                         {(() => {
                             const username = getCollabUser()?.name;
                             const solvers = challenge.solvers ?? [];

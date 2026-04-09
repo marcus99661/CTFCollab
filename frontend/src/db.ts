@@ -37,6 +37,8 @@ export type ChallengeDoc = {
     flag: string | null;
     solvedBy: string | null;
     solvers?: string[];
+    description: string;
+    ctfdId: number | null;
 };
 
 const noteSchema = {
@@ -93,6 +95,8 @@ const challengeSchema = {
         flag: { type: ["string", "null"] },
         solvedBy: { type: ["string", "null"] },
         solvers: { type: "array", items: { type: "string" } },
+        description: { type: "string" },
+        ctfdId: { type: ["number", "null"] },
     },
     required: ["id", "eventId", "title", "category", "points", "url", "createdAt", "updatedAt", "isDeleted"]
 } as const;

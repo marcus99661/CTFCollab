@@ -4,6 +4,7 @@ import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import ChallengeDetailPage from "./pages/ChallengeDetailPage";
 import CtftimePage from "./pages/CtftimePage";
+import CtfdEventPage from "./pages/CtfdEventPage";
 import InvitePage from "./pages/InvitePage";
 import LoginPage from "./pages/LoginPage";
 import PageShell from "./components/PageShell";
@@ -28,6 +29,7 @@ export default function App() {
                                 <Route path="/" element={<DashboardPage />} />
                                 <Route path="/events" element={<EventsPage />} />
                                 <Route path="/events/:id" element={<EventDetailPage />} />
+                                <Route path="/events/:id/ctfd" element={<CtfdEventPage />} />
                                 <Route path="/challenges/:id" element={<ChallengeDetailPage />} />
                                 <Route path="/ctftime" element={<CtftimePage />} />
                             </Routes>

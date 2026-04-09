@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS challenges (
     solved BOOLEAN NOT NULL DEFAULT FALSE,
     flag TEXT,
     solved_by TEXT,
-    solvers TEXT[] NOT NULL DEFAULT '{}'
+    solvers TEXT[] NOT NULL DEFAULT '{}',
+    description TEXT NOT NULL DEFAULT '',
+    ctfd_id INTEGER
 );
 
 
@@ -79,3 +81,10 @@ CREATE INDEX IF NOT EXISTS events_updated_idx ON events (updated_at, id);
 CREATE INDEX IF NOT EXISTS event_members_user_idx ON event_members (user_id);
 CREATE INDEX IF NOT EXISTS challenges_event_idx ON challenges (event_id);
 CREATE INDEX IF NOT EXISTS challenges_updated_idx ON challenges (updated_at, id);
+
+CREATE TABLE IF NOT EXISTS event_ctfd_config (
+    event_id TEXT PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+    ctfd_url TEXT NOT NULL,
+    ctfd_credential TEXT,
+    ctfd_auth_type TEXT NOT NULL DEFAULT 'token'
+);

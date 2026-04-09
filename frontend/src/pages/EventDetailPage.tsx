@@ -501,6 +501,7 @@ export default function EventDetailPage() {
                                 Invite link
                             </button>
                         )}
+                        <Link to={`/events/${id}/ctfd`} className="btn no-underline">CTFd</Link>
                         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
                             Add challenge
                         </button>

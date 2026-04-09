@@ -13,9 +13,6 @@ RUN rm -rf src target/release/deps/ctfcollab*
 
 # ── Application build ─────────────────────────────────────────────────────────
 COPY . .
-# SQLX_OFFLINE tells sqlx to use the checked-in .sqlx query files instead of
-# connecting to a live database at compile time.
-ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
 FROM debian:trixie-slim
