@@ -11,6 +11,8 @@ interface CtfdConfig {
     ctfd_url: string;
     auth_type: string;
     has_credential: boolean;
+    test_ok?: boolean;
+    test_message?: string;
 }
 
 interface ScoreboardEntry {
@@ -135,7 +137,7 @@ export default function CtfdEventPage() {
             setShowConfigForm(false);
             setUrlInput("");
             setCredentialInput("");
-            fetchData(tab);
+            if (json.test_ok) fetchData(tab);
         } catch {
             setConfigError("Could not reach server");
         } finally {
@@ -170,23 +172,25 @@ export default function CtfdEventPage() {
             let added = 0;
             let updated = 0;
             let skipped = 0;
+            const newChallenges: { challengeId: string; ctfdId: number }[] = [];
 
             for (const ch of ctfdChallenges) {
                 const match = existingByName.get(ch.name.toLowerCase());
                 if (match) {
                     const doc = (match as any).toJSON();
-                    if (doc.points !== ch.value) {
-                        await (match as any).patch({ points: ch.value, updatedAt: Date.now() });
+                    if (doc.points !== ch.value || doc.category !== ch.category) {
+                        await (match as any).patch({ points: ch.value, category: ch.category, updatedAt: Date.now() });
                         updated++;
                     } else {
                         skipped++;
                     }
                     continue;
                 }
+                const challengeId = makeId();
                 const noteId = makeId();
                 await db.notes.insert({ id: noteId, title: ch.name, updatedAt: Date.now(), isDeleted: false });
                 await db.challenges.insert({
-                    id: makeId(),
+                    id: challengeId,
                     eventId: id!,
                     title: ch.name,
                     category: ch.category,
@@ -204,8 +208,20 @@ export default function CtfdEventPage() {
                     ctfdId: ch.id,
                 });
                 existingByName.set(ch.name.toLowerCase(), true as any);
+                newChallenges.push({ challengeId, ctfdId: ch.id });
                 added++;
             }
+
+            await Promise.all(newChallenges.map(async ({ challengeId, ctfdId }) => {
+                try {
+                    const res = await authFetch(`/api/events/${id}/ctfd/challenges/${ctfdId}`);
+                    if (!res.ok) return;
+                    const detail = await res.json();
+                    const doc = await db.challenges.findOne(challengeId).exec();
+                    if (doc) await doc.patch({ description: detail.description, updatedAt: Date.now() });
+                } catch {
+                }
+            }));
 
             setImportResult({ added, updated, skipped });
         } catch (e: any) {
@@ -233,6 +249,11 @@ export default function CtfdEventPage() {
                                 <div className="text-xs text-muted">
                                     Auth: {config.auth_type === "cookie" ? "Session cookie" : "API token"} - {config.has_credential ? "set" : "not set"}
                                 </div>
+                                {config.test_message && (
+                                    <div className={`text-xs mt-1 ${config.test_ok ? "text-success" : "text-warning"}`}>
+                                        {config.test_message}
+                                    </div>
+                                )}
                                 <div className="flex gap-2 mt-1">
                                     <button className="btn" onClick={() => { setUrlInput(config.ctfd_url); setCredentialInput(""); setAuthType(config.auth_type as "token" | "cookie"); setShowConfigForm(true); }}>Edit</button>
                                     <button className="btn btn-danger" onClick={deleteConfig}>Remove</button>

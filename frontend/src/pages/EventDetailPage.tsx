@@ -10,6 +10,14 @@ import "../styles/ui.css";
 
 type Member = { user_id: string; username: string; role: string };
 
+interface PlacementInfo {
+    pos: number;
+    score: number;
+    above_gap: number | null;
+    below_gap: number | null;
+    team_count: number;
+}
+
 interface EventInvite {
     token: string;
     max_uses: number | null;
@@ -172,7 +180,6 @@ function InviteOverlay({ eventId, onClose }: { eventId: string; onClose: () => v
     );
 }
 
-// TODO: Replace these hard-coded categories with server provided ENUM
 const CATEGORY_COLORS: Record<string, string> = {
     web: "#1d4ed8",
     pwn: "#b91c1c",
@@ -184,7 +191,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function categoryColor(cat: string): string {
-    return CATEGORY_COLORS[cat.toLowerCase()] ?? "#374151";
+    const key = cat.toLowerCase();
+    if (CATEGORY_COLORS[key]) return CATEGORY_COLORS[key];
+    let h = 0;
+    for (let i = 0; i < key.length; i++) {
+        h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
+    }
+    return `hsl(${Math.abs(h) % 360}, 60%, 55%)`;
 }
 
 function useCountdown(ev: EventDoc | null): string {
@@ -257,7 +270,10 @@ function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => voi
             {!ch.solved && ch.solvers && ch.solvers.length > 0 && (
                 <div className="text-muted text-xs">{ch.solvers.join(", ")}</div>
             )}
-            <div className="flex gap-2 flex-wrap mt-auto">
+            <div className="flex gap-2 flex-wrap mt-auto items-center">
+                {ch.ctfdId && Date.now() - ch.createdAt < 30 * 60 * 1000 && (
+                    <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-accent/20 text-accent">New</span>
+                )}
                 {ch.url && (
                     <a
                         href={ch.url}
@@ -341,6 +357,7 @@ export default function EventDetailPage() {
     const [myRole, setMyRole] = useState<string | null>(null);
     const [inviteUsername, setInviteUsername] = useState("");
     const [inviteError, setInviteError] = useState<string | null>(null);
+    const [placement, setPlacement] = useState<PlacementInfo | null>(null);
 
     const myUserId = getUserIdFromToken();
     const countdown = useCountdown(event);
@@ -388,6 +405,7 @@ export default function EventDetailPage() {
 
             setSyncStatus("Ready");
             fetchMembers();
+            fetchPlacement();
         }
         init().catch((e) => {
             console.error("EventDetailPage init failed:", e);
@@ -401,6 +419,7 @@ export default function EventDetailPage() {
             stopChallengeSync?.();
         };
     }, [id]);
+
 
     async function createChallenge(title: string, category: string, points: string, url: string) {
         if (!title.trim() || !id) return;
@@ -449,6 +468,15 @@ export default function EventDetailPage() {
             setMembers(list);
             const me = list.find(m => m.user_id === myUserId);
             setMyRole(me?.role ?? null);
+        } catch {}
+    }
+
+    async function fetchPlacement() {
+        if (!id) return;
+        try {
+            const res = await authFetch(`/api/events/${id}/ctfd/placement`);
+            if (!res.ok) return;
+            setPlacement(await res.json());
         } catch {}
     }
 
@@ -514,6 +542,20 @@ export default function EventDetailPage() {
                         {totalPoints > 0 && <span>{totalPoints} pts total</span>}
                     </div>
 
+                    {placement && (
+                        <div className="flex gap-4 flex-wrap items-baseline mb-6 text-sm">
+                            <span className="font-bold text-text text-base">#{placement.pos}</span>
+                            <span className="text-muted">of {placement.team_count} teams</span>
+                            <span className="text-muted">{placement.score} pts</span>
+                            {placement.above_gap !== null && (
+                                <span className="text-muted">+{placement.above_gap} pts to #{placement.pos - 1}</span>
+                            )}
+                            {placement.below_gap !== null && (
+                                <span className="text-muted">{placement.below_gap} pts ahead of #{placement.pos + 1}</span>
+                            )}
+                        </div>
+                    )}
+
                     <div className="panel mb-5">
                         <div className="panel-header">Members ({members.length})</div>
                         <div className="panel-body">
@@ -558,7 +600,7 @@ export default function EventDetailPage() {
                         <div className="text-muted text-sm py-8 text-center">No challenges yet.</div>
                     ) : (
                         Object.entries(byCategory)
-                            .sort(([a], [b]) => a.localeCompare(b))
+                            .sort(([a], [b]) => b.localeCompare(a))
                             .map(([cat, chals]) => (
                                 <div key={cat} className="mb-8">
                                     <h2 className="m-0 mb-3 text-base font-semibold capitalize" style={{ color: categoryColor(cat) }}>
