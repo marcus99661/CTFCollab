@@ -20,6 +20,7 @@ export type EventDoc = {
     startAt: number | null;
     endAt: number | null;
     ctftimeId: number | null;
+    flagFormat?: string;
 };
 
 export type ChallengeDoc = {
@@ -70,7 +71,8 @@ const eventSchema = {
         isDeleted: { type: "boolean" },
         startAt: { type: ["number", "null"] },
         endAt: { type: ["number", "null"] },
-        ctftimeId: { type: ["number", "null"] }
+        ctftimeId: { type: ["number", "null"] },
+        flagFormat: { type: "string" }
     },
     required: ["id", "name", "description", "createdBy", "createdAt", "updatedAt", "isDeleted"]
 } as const;

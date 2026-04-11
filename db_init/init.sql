@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS events (
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    ctftime_id INTEGER
+    ctftime_id INTEGER,
+    flag_format TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS event_members (

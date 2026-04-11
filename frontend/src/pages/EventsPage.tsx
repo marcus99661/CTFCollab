@@ -8,16 +8,17 @@ import "../styles/ui.css";
 
 function AddEventOverlay({ onClose, onAdd }: {
     onClose: () => void;
-    onAdd: (name: string, desc: string, startAt: string, endAt: string) => void;
+    onAdd: (name: string, desc: string, startAt: string, endAt: string, flagFormat: string) => void;
 }) {
     const [name, setName] = useState("");
     const [desc, setDesc] = useState("");
     const [startAt, setStartAt] = useState("");
     const [endAt, setEndAt] = useState("");
+    const [flagFormat, setFlagFormat] = useState("");
 
     function submit() {
         if (!name.trim()) return;
-        onAdd(name, desc, startAt, endAt);
+        onAdd(name, desc, startAt, endAt, flagFormat);
         onClose();
     }
 
@@ -35,6 +36,10 @@ function AddEventOverlay({ onClose, onAdd }: {
                     <label className="form-field">
                         <span className="form-field-label">Description<span className="form-field-optional">(optional)</span></span>
                         <input className="input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="" />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Flag format<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" value={flagFormat} onChange={e => setFlagFormat(e.target.value)} placeholder="flag{...}" />
                     </label>
                     <label className="form-field">
                         <span className="form-field-label">Start<span className="form-field-optional">(optional)</span></span>
@@ -97,13 +102,14 @@ export default function EventsPage() {
         };
     }, []);
 
-    async function createEvent(name: string, desc: string, startAt: string, endAt: string) {
+    async function createEvent(name: string, desc: string, startAt: string, endAt: string, flagFormat: string) {
         try {
             const db = await getDb();
             await db.events.insert({
                 id: makeId(),
                 name: name.trim(),
                 description: desc.trim(),
+                flagFormat: flagFormat.trim(),
                 createdBy: getUserIdFromToken() ?? "",
                 createdAt: Date.now(),
                 updatedAt: Date.now(),

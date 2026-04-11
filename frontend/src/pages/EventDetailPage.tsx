@@ -296,6 +296,67 @@ function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => voi
     );
 }
 
+function tsToDatetimeLocal(ts: number | null | undefined): string {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function EditEventOverlay({ event, onClose, onSave }: {
+    event: EventDoc;
+    onClose: () => void;
+    onSave: (name: string, description: string, flagFormat: string, startAt: string, endAt: string) => void;
+}) {
+    const [name, setName] = useState(event.name);
+    const [description, setDescription] = useState(event.description);
+    const [flagFormat, setFlagFormat] = useState(event.flagFormat ?? "");
+    const [startAt, setStartAt] = useState(tsToDatetimeLocal(event.startAt));
+    const [endAt, setEndAt] = useState(tsToDatetimeLocal(event.endAt));
+
+    function submit() {
+        if (!name.trim()) return;
+        onSave(name, description, flagFormat, startAt, endAt);
+        onClose();
+    }
+
+    return (
+        <div className="overlay" onClick={onClose}>
+            <div className="overlay-box" onClick={e => e.stopPropagation()}>
+                <div className="overlay-box-header">
+                    <h5 className="m-0 text-[15px] font-semibold">Edit event</h5>
+                </div>
+                <div className="overlay-box-body">
+                    <label className="form-field">
+                        <span className="form-field-label">Name</span>
+                        <input className="input" value={name} onChange={e => setName(e.target.value)} autoFocus />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Description<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" value={description} onChange={e => setDescription(e.target.value)} />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Flag format<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" value={flagFormat} onChange={e => setFlagFormat(e.target.value)} placeholder="flag{...}" />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Start<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">End<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} />
+                    </label>
+                    <div className="form-actions">
+                        <button className="btn btn-primary" onClick={submit} disabled={!name.trim()}>Save</button>
+                        <button className="btn" onClick={onClose}>Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function AddChallengeOverlay({ onClose, onAdd }: {
     onClose: () => void;
     onAdd: (title: string, category: string, points: string, url: string) => void;
@@ -351,6 +412,7 @@ export default function EventDetailPage() {
     const [event, setEvent] = useState<EventDoc | null>(null);
     const [challenges, setChallenges] = useState<ChallengeDoc[]>([]);
     const [showForm, setShowForm] = useState(false);
+    const [showEdit, setShowEdit] = useState(false);
     const [showInvite, setShowInvite] = useState(false);
     const [syncStatus, setSyncStatus] = useState("Loading...");
     const [members, setMembers] = useState<Member[]>([]);
@@ -420,6 +482,25 @@ export default function EventDetailPage() {
         };
     }, [id]);
 
+
+    async function editEvent(name: string, description: string, flagFormat: string, startAt: string, endAt: string) {
+        if (!id) return;
+        try {
+            const db = await getDb();
+            const doc = await db.events.findOne(id).exec();
+            if (!doc) return;
+            await doc.patch({
+                name: name.trim(),
+                description: description.trim(),
+                flagFormat: flagFormat.trim(),
+                startAt: startAt ? new Date(startAt).getTime() : null,
+                endAt: endAt ? new Date(endAt).getTime() : null,
+                updatedAt: Date.now(),
+            });
+        } catch (e) {
+            console.error("editEvent failed:", e);
+        }
+    }
 
     async function createChallenge(title: string, category: string, points: string, url: string) {
         if (!title.trim() || !id) return;
@@ -525,9 +606,10 @@ export default function EventDetailPage() {
                     <div className="flex items-baseline gap-4 mb-5">
                         <h1 className="m-0 text-[22px] font-bold flex-1">{event.name}</h1>
                         {effectiveRole === "owner" && (
-                            <button className="btn" onClick={() => setShowInvite(true)}>
-                                Invite link
-                            </button>
+                            <>
+                                <button className="btn" onClick={() => setShowEdit(true)}>Edit</button>
+                                <button className="btn" onClick={() => setShowInvite(true)}>Invite link</button>
+                            </>
                         )}
                         <Link to={`/events/${id}/ctfd`} className="btn no-underline">CTFd</Link>
                         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
@@ -619,6 +701,13 @@ export default function EventDetailPage() {
                 <div className="text-muted text-sm py-8 text-center">Event not found.</div>
             )}
 
+            {showEdit && event && (
+                <EditEventOverlay
+                    event={event}
+                    onClose={() => setShowEdit(false)}
+                    onSave={editEvent}
+                />
+            )}
             {showForm && (
                 <AddChallengeOverlay
                     onClose={() => setShowForm(false)}

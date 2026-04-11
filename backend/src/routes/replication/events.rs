@@ -22,7 +22,7 @@ async fn pull(
     let docs: Vec<EventDoc> = match req.checkpoint.clone() {
         None => {
             sqlx::query_as::<_, EventDoc>(
-                "SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id
+                "SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id, e.flag_format
                  FROM events e
                  JOIN event_members em ON em.event_id = e.id AND em.user_id = $2
                  ORDER BY e.updated_at ASC, e.id ASC
@@ -36,7 +36,7 @@ async fn pull(
         }
         Some(cp) => {
             sqlx::query_as::<_, EventDoc>(
-                "SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id
+                "SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id, e.flag_format
                  FROM events e
                  JOIN event_members em ON em.event_id = e.id AND em.user_id = $3
                  WHERE (e.updated_at > $1) OR (e.updated_at = $1 AND e.id > $2)
@@ -100,15 +100,14 @@ async fn push(
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
             match member {
-                None => continue,
-                Some(role) if incoming.is_deleted && role != EventRole::Owner => continue,
-                _ => {}
+                None | Some(EventRole::Member) => continue,
+                Some(EventRole::Owner) => {}
             }
         }
 
         let applied: Option<EventDoc> = sqlx::query_as::<_, EventDoc>(
-            "INSERT INTO events (id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            "INSERT INTO events (id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id, flag_format)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              ON CONFLICT (id) DO UPDATE
              SET name = EXCLUDED.name,
                  description = EXCLUDED.description,
@@ -116,9 +115,10 @@ async fn push(
                  is_deleted = EXCLUDED.is_deleted,
                  start_at = EXCLUDED.start_at,
                  end_at = EXCLUDED.end_at,
-                 ctftime_id = EXCLUDED.ctftime_id
+                 ctftime_id = EXCLUDED.ctftime_id,
+                 flag_format = EXCLUDED.flag_format
              WHERE EXCLUDED.updated_at >= events.updated_at
-             RETURNING id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id"
+             RETURNING id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id, flag_format"
         )
         .bind(&incoming.id)
         .bind(&incoming.name)
@@ -130,6 +130,7 @@ async fn push(
         .bind(incoming.start_at)
         .bind(incoming.end_at)
         .bind(incoming.ctftime_id)
+        .bind(&incoming.flag_format)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -150,7 +151,7 @@ async fn push(
 
         if applied.is_none() {
             let server_doc: Option<EventDoc> = sqlx::query_as::<_, EventDoc>(
-                "SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id
+                "SELECT id, name, description, created_by, created_at, updated_at, is_deleted, start_at, end_at, ctftime_id, flag_format
                  FROM events WHERE id = $1"
             )
             .bind(&incoming.id)

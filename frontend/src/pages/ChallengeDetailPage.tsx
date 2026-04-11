@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getDb, type ChallengeDoc } from "../db";
+import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
 import { getCollabUser, authFetch } from "../auth";
@@ -10,6 +10,7 @@ import "../styles/ui.css";
 export default function ChallengeDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [challenge, setChallenge] = useState<ChallengeDoc | null>(null);
+    const [flagFormat, setFlagFormat] = useState("");
     const [flagInput, setFlagInput] = useState("");
     const [syncing, setSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
@@ -25,11 +26,13 @@ export default function ChallengeDetailPage() {
             stopChallengeSync = startChallengesAutoSync({ db, baseUrl: "", debounceMs: 900, pollMs: 8000 });
             stopNotesSync = startNotesAutoSync({ db, baseUrl: "", debounceMs: 900, pollMs: 8000 });
 
-            sub = db.challenges.findOne(id).$.subscribe((doc: any) => {
+            sub = db.challenges.findOne(id).$.subscribe(async (doc: any) => {
                 if (!doc) { setChallenge(null); return; }
                 const data = doc.toJSON();
                 setChallenge(data);
                 setFlagInput(data.flag ?? "");
+                const eventDoc = await db.events.findOne(data.eventId).exec();
+                if (eventDoc) setFlagFormat((eventDoc.toJSON() as EventDoc).flagFormat ?? "");
             });
         }
         init().catch(console.error);
@@ -201,7 +204,7 @@ export default function ChallengeDetailPage() {
                                         value={flagInput}
                                         onChange={e => setFlagInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === "Enter") markSolved(); }}
-                                        placeholder="flag{...}"
+                                        placeholder={flagFormat || "flag{...}"}
                                         autoFocus
                                     />
                                 </label>
