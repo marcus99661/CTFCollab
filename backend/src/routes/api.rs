@@ -1,4 +1,5 @@
 use axum::{extract::{Path, State}, routing::{delete, get, post}, Json, Router};
+use bcrypt;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
@@ -8,6 +9,8 @@ use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/profile", get(get_profile).delete(delete_account)) // Get profile, delete profile
+        .route("/profile/password", post(change_password)) // Change password
         .route("/events/{id}/members", get(list_members)) // List members
         .route("/events/{id}/members", post(invite_user)) // Invite user by username
         .route("/events/{id}/members/{user_id}", delete(kick_user)) // Kick user
@@ -154,6 +157,141 @@ async fn kick_user(
     sqlx::query("DELETE FROM event_members WHERE event_id = $1 AND user_id = $2")
         .bind(&event_id)
         .bind(&target_user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(())
+}
+
+#[derive(Serialize)]
+struct ProfileResponse {
+    username: String,
+}
+
+async fn get_profile(
+    auth: AuthUser,
+    State(state): State<AppState>,
+) -> Result<Json<ProfileResponse>, AppError> {
+    let username = sqlx::query_scalar::<_, String>("SELECT name FROM users WHERE id = $1")
+        .bind(&auth.user_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or(AppError::Unauthorized)?;
+
+    Ok(Json(ProfileResponse { username }))
+}
+
+#[derive(Deserialize)]
+struct ChangePasswordRequest {
+    current_password: String,
+    new_password: String,
+}
+
+async fn change_password(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<ChangePasswordRequest>,
+) -> Result<(), AppError> {
+    if body.new_password.is_empty() {
+        return Err(AppError::BadRequest("New password cannot be empty".into()));
+    }
+
+    if body.new_password.len() > 128 {
+        return Err(AppError::BadRequest("Password is too long".into()));
+    }
+
+    let hash = sqlx::query_scalar::<_, String>("SELECT password_hash FROM users WHERE id = $1")
+        .bind(&auth.user_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or(AppError::Unauthorized)?;
+
+    if bcrypt::verify(&body.current_password, &hash).unwrap_or(false) == false {
+        return Err(AppError::BadRequest("Current password is incorrect".into()));
+    }
+
+    let new_hash = bcrypt::hash(&body.new_password, bcrypt::DEFAULT_COST)
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
+        .bind(&new_hash)
+        .bind(&auth.user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct DeleteAccountRequest {
+    password: String,
+}
+
+async fn delete_account(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<DeleteAccountRequest>,
+) -> Result<(), AppError> {
+    let hash = sqlx::query_scalar::<_, String>("SELECT password_hash FROM users WHERE id = $1")
+        .bind(&auth.user_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or(AppError::Unauthorized)?;
+
+    if bcrypt::verify(&body.password, &hash).unwrap_or(false) == false {
+        return Err(AppError::BadRequest("Password is incorrect".into()));
+    }
+
+    let owns_event = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM event_members em JOIN events e ON e.id = em.event_id WHERE em.user_id = $1 AND em.role = 'owner' AND e.is_deleted = false)"
+    )
+    .bind(&auth.user_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if owns_event {
+        return Err(AppError::BadRequest("You own one or more events. Delete them before deleting your account.".into()));
+    }
+
+    // Clean up soft-deleted events this user created (invites first, members cascade via FK)
+    sqlx::query("DELETE FROM event_invites WHERE event_id IN (SELECT id FROM events WHERE created_by = $1)")
+        .bind(&auth.user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("DELETE FROM event_members WHERE event_id IN (SELECT id FROM events WHERE created_by = $1)")
+        .bind(&auth.user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("DELETE FROM events WHERE created_by = $1")
+        .bind(&auth.user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("DELETE FROM invite_joins WHERE user_id = $1")
+        .bind(&auth.user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("DELETE FROM event_members WHERE user_id = $1")
+        .bind(&auth.user_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(&auth.user_id)
         .execute(&state.db)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;

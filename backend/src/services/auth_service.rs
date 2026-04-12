@@ -22,8 +22,9 @@ pub struct RegisterRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
-    pub token: String, // JWT token
+    pub token: String,
     pub username: String,
+    pub user_id: String,
 }
 
 // Body of the JWT
@@ -48,13 +49,19 @@ impl AuthService {
             event_based,
         };
 
+        let user_id = claims.sub.clone();
         AuthResponse {
             token: jsonwebtoken::encode(&Header::new(Algorithm::HS256), &claims, &enc_key).unwrap(),
             username: user,
+            user_id,
         }
     }
 
     pub async fn login(db: &PgPool, enc_key: &EncodingKey, req: LoginRequest) -> Result<AuthResponse, String> {
+        if req.password.len() > 128 {
+            return Err("Invalid credentials".to_string());
+        }
+
         let user = sqlx::query_as::<_, crate::models::Users>(
             "SELECT id, name, email, password_hash, is_event_based FROM users WHERE name = $1"
         )
@@ -68,14 +75,18 @@ impl AuthService {
             None => return Err("Invalid credentials".to_string()),
         };
 
-        if bcrypt::verify(&req.password, &user.password_hash).is_err() {
-            return Err("Invalid password".to_string())
+        if !bcrypt::verify(&req.password, &user.password_hash).unwrap_or(false) {
+            return Err("Invalid credentials".to_string())
         }
 
         Ok(Self::create_token(user.id, req.username, user.is_event_based, enc_key))
     }
 
     pub async fn register(db: &PgPool, enc_key: &EncodingKey, req: RegisterRequest) -> Result<AuthResponse, String> {
+        if req.password.len() > 128 {
+            return Err("Password is too long".to_string());
+        }
+
         if req.password != req.confirm_password {
             return Err("Passwords are not the same".to_string());
         }

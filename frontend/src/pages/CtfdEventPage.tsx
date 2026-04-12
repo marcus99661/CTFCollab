@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { authFetch } from "../auth";
+import { authFetch, getUserIdFromToken } from "../auth";
 import { getDb } from "../db";
 import { makeId } from "../utils";
 import "../styles/ui.css";
@@ -59,19 +59,26 @@ export default function CtfdEventPage() {
     async function loadConfig() {
         setConfigLoading(true);
         try {
-            const res = await authFetch(`/api/events/${id}/ctfd/config`);
-            if (res.ok) {
-                const data: CtfdConfig = await res.json();
+            const [membersRes, configRes] = await Promise.all([
+                authFetch(`/api/events/${id}/members`),
+                authFetch(`/api/events/${id}/ctfd/config`),
+            ]);
+
+            if (membersRes.ok) {
+                const members: { user_id: string; role: string }[] = await membersRes.json();
+                const me = members.find(m => m.user_id === getUserIdFromToken());
+                setIsOwner(me?.role === "owner");
+            }
+
+            if (configRes.ok) {
+                const data: CtfdConfig = await configRes.json();
                 setConfig(data);
-                setIsOwner(true);
                 setAuthType(data.auth_type as "token" | "cookie");
                 fetchData("scoreboard");
-            } else if (res.status === 400) {
-                setIsOwner(true);
+            } else if (configRes.status === 400) {
                 setConfig(null);
                 await prefillUrlFromCtftime();
-            } else if (res.status === 403) {
-                setIsOwner(false);
+            } else if (configRes.status === 403) {
                 fetchData("scoreboard");
             }
         } catch {
@@ -167,7 +174,7 @@ export default function CtfdEventPage() {
 
             const db = await getDb();
             const existing = await db.challenges.find({ selector: { eventId: id, isDeleted: false } }).exec();
-            const existingByName = new Map(existing.map((d: any) => [d.toJSON().title.toLowerCase(), d]));
+            const existingByCtfdId = new Map(existing.map((d: any) => [d.toJSON().ctfdId, d]));
 
             let added = 0;
             let updated = 0;
@@ -175,7 +182,7 @@ export default function CtfdEventPage() {
             const newChallenges: { challengeId: string; ctfdId: number }[] = [];
 
             for (const ch of ctfdChallenges) {
-                const match = existingByName.get(ch.name.toLowerCase());
+                const match = existingByCtfdId.get(ch.id);
                 if (match) {
                     const doc = (match as any).toJSON();
                     if (doc.points !== ch.value || doc.category !== ch.category) {
@@ -207,7 +214,7 @@ export default function CtfdEventPage() {
                     description: "",
                     ctfdId: ch.id,
                 });
-                existingByName.set(ch.name.toLowerCase(), true as any);
+                existingByCtfdId.set(ch.id, true as any);
                 newChallenges.push({ challengeId, ctfdId: ch.id });
                 added++;
             }

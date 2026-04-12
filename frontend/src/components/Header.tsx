@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { clearToken, getCollabUser, clearCollabUser, isEventBased } from "../auth";
+import "../styles/ui.css";
 import { useServerStatus, type ServerStatus } from "../hooks/useServerStatus";
 
 const allNavLinks = [
@@ -82,6 +83,12 @@ export default function Header() {
                     </span>
                 )}
 
+                <Link
+                    to="/profile"
+                    className="bg-white/15 border border-white/30 rounded px-3 py-1 text-white no-underline text-xs"
+                >
+                    Profile
+                </Link>
                 <button
                     onClick={logout}
                     className="bg-white/15 border border-white/30 rounded px-3 py-1 text-white cursor-pointer text-xs font-[inherit]"

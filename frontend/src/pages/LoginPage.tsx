@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { setToken, setCollabUser } from "../auth";
+import { setToken, setCollabUser, getUserIdFromToken } from "../auth";
 import "../styles/ui.css";
 
 export default function LoginPage() {
@@ -37,7 +37,20 @@ export default function LoginPage() {
                 return;
             }
 
+            const prevUserId = getUserIdFromToken();
             setToken(json.token);
+
+            // If a different user was previously logged in, wipe their local data
+            if (prevUserId && prevUserId !== json.user_id) {
+                const { getDb, resetDb } = await import("../db");
+                const db = await getDb();
+                await db.remove();
+                resetDb();
+                localStorage.removeItem("eventsCheckpoint");
+                localStorage.removeItem("challengesCheckpoint");
+                localStorage.removeItem("notesCheckpoint");
+            }
+
             const colors = ["#958DF1", "#F98181", "#FBBC88", "#70CFF8", "#94FADB", "#B9F18D"];
             const color = colors[json.username.charCodeAt(0) % colors.length];
             setCollabUser(json.username, color);

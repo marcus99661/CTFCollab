@@ -133,6 +133,7 @@ export default function CtftimePage() {
             startAt: new Date(event.start).getTime(),
             endAt: new Date(event.finish).getTime(),
             ctftimeId: event.id,
+            flagFormat: "",
         };
         await db.events.insert(doc);
 

@@ -49,6 +49,7 @@ pub struct EventDoc {
     pub start_at: Option<i64>,
     pub end_at: Option<i64>,
     pub ctftime_id: Option<i32>,
+    #[serde(default)]
     pub flag_format: String,
 }
 

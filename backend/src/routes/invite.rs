@@ -244,11 +244,13 @@ async fn join_via_invite(
     State(state): State<AppState>,
     Path(token): Path<String>,
 ) -> Result<(), AppError> {
+    let mut tx = state.db.begin().await.map_err(|e| AppError::Internal(e.to_string()))?;
+
     let invite = sqlx::query_as::<_, EventInvite>(
-        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1"
+        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1 FOR UPDATE"
     )
     .bind(&token)
-    .fetch_optional(&state.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?
     .ok_or_else(|| AppError::BadRequest("Invite not found".into()))?;
@@ -260,7 +262,7 @@ async fn join_via_invite(
     )
     .bind(&invite.event_id)
     .bind(&auth.user_id)
-    .fetch_one(&state.db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -276,13 +278,13 @@ async fn join_via_invite(
     .bind(&invite.event_id)
     .bind(&auth.user_id)
     .bind(now)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     sqlx::query("UPDATE event_invites SET uses = uses + 1 WHERE token = $1")
         .bind(&token)
-        .execute(&state.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -290,10 +292,11 @@ async fn join_via_invite(
         .bind(&token)
         .bind(&auth.user_id)
         .bind(now)
-        .execute(&state.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
+    tx.commit().await.map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(())
 }
 
@@ -302,11 +305,17 @@ async fn register_via_invite(
     Path(token): Path<String>,
     Json(body): Json<RegisterViaInviteBody>,
 ) -> Result<Json<AuthResponse>, AppError> {
+    if body.password.len() > 128 {
+        return Err(AppError::BadRequest("Password is too long".into()));
+    }
+
+    let mut tx = state.db.begin().await.map_err(|e| AppError::Internal(e.to_string()))?;
+
     let invite = sqlx::query_as::<_, EventInvite>(
-        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1"
+        "SELECT token, event_id, max_uses, uses, expires_at, event_based, created_at FROM event_invites WHERE token = $1 FOR UPDATE"
     )
     .bind(&token)
-    .fetch_optional(&state.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?
     .ok_or_else(|| AppError::BadRequest("Invite not found".into()))?;
@@ -318,15 +327,12 @@ async fn register_via_invite(
     )
     .bind(&body.username)
     .bind(&body.email)
-    .fetch_one(&state.db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    if name_taken {
-        return Err(AppError::BadRequest("Username already taken".into()));
-    }
-    if email_taken {
-        return Err(AppError::BadRequest("Email already in use".into()));
+    if name_taken || email_taken {
+        return Err(AppError::BadRequest("Username or email already in use".into()));
     }
 
     let user_id = Uuid::new_v4().to_string();
@@ -343,7 +349,7 @@ async fn register_via_invite(
     .bind(&hash)
     .bind(now_secs())
     .bind(invite.event_based)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -353,13 +359,13 @@ async fn register_via_invite(
     .bind(&invite.event_id)
     .bind(&user_id)
     .bind(now)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;
 
     sqlx::query("UPDATE event_invites SET uses = uses + 1 WHERE token = $1")
         .bind(&token)
-        .execute(&state.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -367,9 +373,10 @@ async fn register_via_invite(
         .bind(&token)
         .bind(&user_id)
         .bind(now)
-        .execute(&state.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
+    tx.commit().await.map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(Json(AuthService::create_token(user_id, body.username, invite.event_based, &state.enc_key)))
 }

@@ -7,6 +7,7 @@ import CtftimePage from "./pages/CtftimePage";
 import CtfdEventPage from "./pages/CtfdEventPage";
 import InvitePage from "./pages/InvitePage";
 import LoginPage from "./pages/LoginPage";
+import ProfilePage from "./pages/ProfilePage";
 import PageShell from "./components/PageShell";
 import { getToken } from "./auth";
 
@@ -32,6 +33,7 @@ export default function App() {
                                 <Route path="/events/:id/ctfd" element={<CtfdEventPage />} />
                                 <Route path="/challenges/:id" element={<ChallengeDetailPage />} />
                                 <Route path="/ctftime" element={<CtftimePage />} />
+                                <Route path="/profile" element={<ProfilePage />} />
                             </Routes>
                         </PageShell>
                     </ProtectedRoute>
