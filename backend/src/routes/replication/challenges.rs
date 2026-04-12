@@ -107,8 +107,31 @@ async fn push(
 
         match role {
             None => continue,
-            Some(r) if incoming.is_deleted && r != EventRole::Owner => continue,
-            _ => {}
+            Some(EventRole::Owner) => {}
+            Some(EventRole::Member) => {
+                // Members can only update collaborative fields, restore metadata from the server
+                let existing = sqlx::query_as::<_, ChallengeDoc>(
+                    "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id
+                     FROM challenges WHERE id = $1"
+                )
+                .bind(&incoming.id)
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+                match existing {
+                    None => continue,
+                    Some(server) => {
+                        incoming.title = server.title;
+                        incoming.category = server.category;
+                        incoming.points = server.points;
+                        incoming.url = server.url;
+                        incoming.is_deleted = server.is_deleted;
+                        incoming.description = server.description;
+                        incoming.ctfd_id = server.ctfd_id;
+                    }
+                }
+            }
         }
 
         let applied: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(

@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
-import { getCollabUser, authFetch } from "../auth";
+import { getCollabUser, authFetch, getUserIdFromToken } from "../auth";
 import NoteEditor from "../components/NoteEditor";
 import "../styles/ui.css";
 
@@ -11,7 +11,9 @@ export default function ChallengeDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [challenge, setChallenge] = useState<ChallengeDoc | null>(null);
     const [flagFormat, setFlagFormat] = useState("");
+    const [isOwner, setIsOwner] = useState(false);
     const [flagInput, setFlagInput] = useState("");
+    const [showEdit, setShowEdit] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -32,7 +34,11 @@ export default function ChallengeDetailPage() {
                 setChallenge(data);
                 setFlagInput(data.flag ?? "");
                 const eventDoc = await db.events.findOne(data.eventId).exec();
-                if (eventDoc) setFlagFormat((eventDoc.toJSON() as EventDoc).flagFormat ?? "");
+                if (eventDoc) {
+                    const ev = eventDoc.toJSON() as EventDoc;
+                    setFlagFormat(ev.flagFormat ?? "");
+                    setIsOwner(ev.createdBy === getUserIdFromToken());
+                }
             });
         }
         init().catch(console.error);
@@ -102,6 +108,20 @@ export default function ChallengeDetailPage() {
         setFlagInput("");
     }
 
+    async function editChallenge(title: string, category: string, points: string, url: string) {
+        if (!id) return;
+        const db = await getDb();
+        const doc = await db.challenges.findOne(id).exec();
+        if (!doc) return;
+        await doc.patch({
+            title: title.trim(),
+            category: category.trim(),
+            points: Number(points) || 0,
+            url: url.trim(),
+            updatedAt: Date.now(),
+        });
+    }
+
     async function syncFromCtfd() {
         if (!challenge?.ctfdId) return;
         setSyncing(true);
@@ -130,6 +150,51 @@ export default function ChallengeDetailPage() {
         return <div className="text-muted text-sm py-8 text-center">Challenge not found.</div>;
     }
 
+    function EditChallengeOverlay({ onClose }: { onClose: () => void }) {
+        const [title, setTitle] = useState(challenge!.title);
+        const [category, setCategory] = useState(challenge!.category);
+        const [points, setPoints] = useState(String(challenge!.points || ""));
+        const [url, setUrl] = useState(challenge!.url);
+
+        function submit() {
+            if (!title.trim()) return;
+            editChallenge(title, category, points, url);
+            onClose();
+        }
+
+        return (
+            <div className="overlay" onClick={onClose}>
+                <div className="overlay-box" onClick={e => e.stopPropagation()}>
+                    <div className="overlay-box-header">
+                        <h5 className="m-0 text-[15px] font-semibold">Edit challenge</h5>
+                    </div>
+                    <div className="overlay-box-body">
+                        <label className="form-field">
+                            <span className="form-field-label">Name</span>
+                            <input className="input" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+                        </label>
+                        <label className="form-field">
+                            <span className="form-field-label">Points<span className="form-field-optional">(optional)</span></span>
+                            <input className="input" type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="0" />
+                        </label>
+                        <label className="form-field">
+                            <span className="form-field-label">Category<span className="form-field-optional">(optional)</span></span>
+                            <input className="input" value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Web, Pwn, Crypto..." />
+                        </label>
+                        <label className="form-field">
+                            <span className="form-field-label">URL<span className="form-field-optional">(optional)</span></span>
+                            <input className="input" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
+                        </label>
+                        <div className="form-actions">
+                            <button className="btn btn-primary" onClick={submit} disabled={!title.trim()}>Save</button>
+                            <button className="btn" onClick={onClose}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col h-[calc(100vh-52px)]">
             <div className="px-5 py-2.5 border-b border-border flex items-center gap-4 shrink-0">
@@ -147,6 +212,9 @@ export default function ChallengeDetailPage() {
                             {syncing ? "Syncing..." : "Sync from CTFd"}
                         </button>
                     )}
+                    {isOwner && (
+                        <button className="btn" onClick={() => setShowEdit(true)}>Edit</button>
+                    )}
                     {challenge.url && (
                         <a href={challenge.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent no-underline hover:underline">
                             link
@@ -154,6 +222,7 @@ export default function ChallengeDetailPage() {
                     )}
                 </div>
             </div>
+            {showEdit && <EditChallengeOverlay onClose={() => setShowEdit(false)} />}
 
             <div className="flex-1 flex overflow-hidden gap-4 p-4">
                 <div className="w-[260px] shrink-0 overflow-auto border border-border rounded-md">
