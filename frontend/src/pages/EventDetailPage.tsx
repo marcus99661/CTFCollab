@@ -4,7 +4,7 @@ import { getDb, type EventDoc, type ChallengeDoc } from "../db";
 import { startEventsAutoSync } from "../sync/eventsSync";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
-import { makeId } from "../utils";
+import { makeId, nodeToMarkdown } from "../utils";
 import { authFetch, getUserIdFromToken } from "../auth";
 import "../styles/ui.css";
 
@@ -523,6 +523,36 @@ export default function EventDetailPage() {
         }
     }
 
+    async function downloadNotes() {
+        const JSZip = (await import("jszip")).default;
+        const Y = await import("yjs");
+        const { IndexeddbPersistence } = await import("y-indexeddb");
+        const { yDocToProsemirrorJSON } = await import("y-prosemirror");
+
+        const zip = new JSZip();
+        for (const ch of challenges) {
+            if (!ch.noteId) continue;
+            const ydoc = new Y.Doc();
+            const idb = new IndexeddbPersistence(`note-${ch.noteId}`, ydoc);
+            await idb.whenSynced;
+            const json = yDocToProsemirrorJSON(ydoc, "default");
+            idb.destroy();
+            ydoc.destroy();
+            const md = nodeToMarkdown(json);
+            // skip challenges with empty notes
+            //if (!md.trim()) continue;
+            const filename = ch.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || ch.id;
+            zip.file(filename + ".md", md);
+        }
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = (event?.name ?? "notes").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") + ".zip";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     async function fetchMembers() {
         if (!id) return;
         try {
@@ -595,6 +625,7 @@ export default function EventDetailPage() {
                             </>
                         )}
                         <Link to={`/events/${id}/ctfd`} className="btn no-underline">CTFd</Link>
+                        <button className="btn" onClick={downloadNotes}>Download notes</button>
                         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
                             Add challenge
                         </button>
