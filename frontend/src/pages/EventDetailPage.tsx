@@ -241,7 +241,7 @@ function useCountdown(ev: EventDoc | null): string {
     return text;
 }
 
-function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => void }) {
+function ChallengeCard({ ch }: { ch: ChallengeDoc }) {
     const color = categoryColor(ch.category || "misc");
     const navigate = useNavigate();
 
@@ -285,12 +285,6 @@ function ChallengeCard({ ch, onDelete }: { ch: ChallengeDoc; onDelete: () => voi
                         link
                     </a>
                 )}
-                <button
-                    className="btn-text ml-auto"
-                    onClick={e => { e.stopPropagation(); onDelete(); }}
-                >
-                    delete
-                </button>
             </div>
         </div>
     );
@@ -529,17 +523,6 @@ export default function EventDetailPage() {
         }
     }
 
-    async function deleteChallenge(cid: string) {
-        try {
-            const db = await getDb();
-            const doc = await db.challenges.findOne(cid).exec();
-            if (!doc) return;
-            await doc.patch({ isDeleted: true, updatedAt: Date.now() });
-        } catch (e) {
-            console.error("deleteChallenge failed:", e);
-        }
-    }
-
     async function fetchMembers() {
         if (!id) return;
         try {
@@ -690,7 +673,7 @@ export default function EventDetailPage() {
                                     </h2>
                                     <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
                                         {chals.map(ch => (
-                                            <ChallengeCard key={ch.id} ch={ch} onDelete={() => deleteChallenge(ch.id)} />
+                                            <ChallengeCard key={ch.id} ch={ch} />
                                         ))}
                                     </div>
                                 </div>

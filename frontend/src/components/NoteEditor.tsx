@@ -61,7 +61,7 @@ function Divider() {
     return <span className="tb-divider" />;
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, onDownload }: { editor: Editor; onDownload: () => void }) {
     return (
         <div className="note-toolbar">
             <TBtn
@@ -145,17 +145,71 @@ function Toolbar({ editor }: { editor: Editor }) {
                 onClick={() => editor.chain().focus().setHorizontalRule().run()}
                 title="Horizontal rule"
             >---</TBtn>
+
+            <div className="ml-auto">
+                <TBtn onClick={onDownload} title="Download as Markdown">Download note</TBtn>
+            </div>
         </div>
     );
 }
 
 
+function nodeToMarkdown(node: any, listDepth = 0): string {
+    if (!node) return "";
+
+    if (node.type === "text") {
+        let text = node.text ?? "";
+        const marks: string[] = (node.marks ?? []).map((m: any) => m.type);
+        if (marks.includes("code")) return "`" + text + "`";
+        if (marks.includes("bold")) text = "**" + text + "**";
+        if (marks.includes("italic")) text = "*" + text + "*";
+        if (marks.includes("strike")) text = "~~" + text + "~~";
+        return text;
+    }
+
+    const children = (node.content ?? []).map((c: any) => nodeToMarkdown(c, listDepth)).join("");
+
+    switch (node.type) {
+        case "doc":
+            return (node.content ?? []).map((c: any) => nodeToMarkdown(c, listDepth)).join("\n\n").trim();
+        case "heading":
+            return "#".repeat(node.attrs?.level ?? 1) + " " + children;
+        case "paragraph":
+            return children;
+        case "hardBreak":
+            return "\n";
+        case "horizontalRule":
+            return "---";
+        case "codeBlock": {
+            const lang = node.attrs?.language ?? "";
+            return "```" + lang + "\n" + children + "\n```";
+        }
+        case "blockquote":
+            return (node.content ?? [])
+                .map((c: any) => nodeToMarkdown(c, listDepth).split("\n").map((l: string) => "> " + l).join("\n"))
+                .join("\n\n");
+        case "bulletList":
+            return (node.content ?? [])
+                .map((c: any) => " ".repeat(listDepth * 2) + "- " + nodeToMarkdown(c, listDepth + 1))
+                .join("\n");
+        case "orderedList":
+            return (node.content ?? [])
+                .map((c: any, i: number) => " ".repeat(listDepth * 2) + (i + 1) + ". " + nodeToMarkdown(c, listDepth + 1))
+                .join("\n");
+        case "listItem":
+            return (node.content ?? []).map((c: any) => nodeToMarkdown(c, listDepth)).join("\n");
+        default:
+            return children;
+    }
+}
+
 interface Props {
     noteId: string;
+    downloadName?: string;
 }
 
 // Parent must use key={noteId} so this component is fully remounted on note switch.
-export default function NoteEditor({ noteId }: Props) {
+export default function NoteEditor({ noteId, downloadName }: Props) {
     const [connStatus, setConnStatus] = useState("connecting");
     const [ydoc] = useState(() => new Y.Doc());
     (window as any).ydoc = ydoc; // DEBUG - ydoc.getXmlFragment("default").toString()
@@ -192,9 +246,21 @@ export default function NoteEditor({ noteId }: Props) {
         connStatus === "connected"  ? "#4caf50" :
         connStatus === "connecting" ? "#ff9800" : "#f44336";
 
+    function downloadMarkdown() {
+        if (!editor) return;
+        const md = nodeToMarkdown(editor.getJSON());
+        const blob = new Blob([md], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = (downloadName ?? "note") + ".md";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     return (
         <div className="note-editor-wrap">
-            {editor && <Toolbar editor={editor} />}
+            {editor && <Toolbar editor={editor} onDownload={downloadMarkdown} />}
             <div className="note-editor-status">
                 <span style={{ color: statusColor }}>●</span> {connStatus}
             </div>

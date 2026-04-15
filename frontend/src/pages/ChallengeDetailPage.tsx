@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
@@ -9,6 +9,7 @@ import "../styles/ui.css";
 
 export default function ChallengeDetailPage() {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const [challenge, setChallenge] = useState<ChallengeDoc | null>(null);
     const [flagFormat, setFlagFormat] = useState("");
     const [isOwner, setIsOwner] = useState(false);
@@ -122,6 +123,16 @@ export default function ChallengeDetailPage() {
         });
     }
 
+    async function deleteChallenge() {
+        if (!id || !challenge) return;
+        if (!confirm(`Delete "${challenge.title}"? This cannot be undone.`)) return;
+        const db = await getDb();
+        const doc = await db.challenges.findOne(id).exec();
+        if (!doc) return;
+        await doc.patch({ isDeleted: true, updatedAt: Date.now() });
+        navigate(`/events/${challenge.eventId}`);
+    }
+
     async function syncFromCtfd() {
         if (!challenge?.ctfdId) return;
         setSyncing(true);
@@ -213,7 +224,10 @@ export default function ChallengeDetailPage() {
                         </button>
                     )}
                     {isOwner && (
-                        <button className="btn" onClick={() => setShowEdit(true)}>Edit</button>
+                        <>
+                            <button className="btn" onClick={() => setShowEdit(true)}>Edit</button>
+                            <button className="btn btn-danger" onClick={deleteChallenge}>Delete</button>
+                        </>
                     )}
                     {challenge.url && (
                         <a href={challenge.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent no-underline hover:underline">
@@ -291,7 +305,7 @@ export default function ChallengeDetailPage() {
 
                 <div className="flex-1 overflow-auto border border-border rounded-md px-4 py-3">
                     {challenge.noteId
-                        ? <NoteEditor key={challenge.noteId} noteId={challenge.noteId} />
+                        ? <NoteEditor key={challenge.noteId} noteId={challenge.noteId} downloadName={challenge.title} />
                         : <div className="text-muted text-sm py-8 text-center">No note attached to this challenge.</div>
                     }
                 </div>
