@@ -26,15 +26,10 @@ export default function Header() {
     const navLinks = allNavLinks.filter(l => !(eventBased && l.eventBasedHidden));
 
     async function logout() {
-        const { getDb, resetDb } = await import("../db");
-        const db = await getDb();
-        await db.remove();
-        resetDb();
+        const { clearLocalData } = await import("../db");
+        await clearLocalData();
         clearToken();
         clearCollabUser();
-        localStorage.removeItem("eventsCheckpoint");
-        localStorage.removeItem("challengesCheckpoint");
-        localStorage.removeItem("notesCheckpoint");
         navigate("/login");
     }
 

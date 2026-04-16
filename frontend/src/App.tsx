@@ -16,10 +16,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
 }
 
+function GuestRoute({ children }: { children: React.ReactNode }) {
+    if (getToken()) return <Navigate to="/" replace />;
+    return <>{children}</>;
+}
+
 export default function App() {
     return (
         <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
             <Route path="/invite/:token" element={<InvitePage />} />
             <Route
                 path="/*"

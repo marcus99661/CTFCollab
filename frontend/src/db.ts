@@ -115,6 +115,15 @@ export function resetDb() {
     dbPromise = null;
 }
 
+export async function clearLocalData() {
+    const db = await getDb();
+    await db.remove();
+    resetDb();
+    localStorage.removeItem("eventsCheckpoint");
+    localStorage.removeItem("challengesCheckpoint");
+    localStorage.removeItem("notesCheckpoint");
+}
+
 export async function getDb() {
     if (!dbPromise) {
         dbPromise = (async () => {

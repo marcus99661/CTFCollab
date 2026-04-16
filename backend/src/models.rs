@@ -59,8 +59,10 @@ pub struct ChallengeDoc {
     pub id: String,
     pub event_id: String,
     pub title: String,
-    pub category: String, // TODO: Enum
+    #[serde(default)]
+    pub category: String,
     pub points: i32,
+    #[serde(default)]
     pub url: String,
     pub created_at: i64,
     pub updated_at: i64,

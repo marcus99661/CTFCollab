@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authFetch, clearToken, clearCollabUser } from "../auth";
-import { getDb, resetDb } from "../db";
+import { clearLocalData } from "../db";
 import "../styles/ui.css";
 
 export default function ProfilePage() {
@@ -66,14 +66,9 @@ export default function ProfilePage() {
             const json = await res.json().catch(() => ({}));
             if (!res.ok) { setDeleteError(json.error ?? "Failed to delete account"); return; }
 
-            const db = await getDb();
-            await db.remove();
-            resetDb();
+            await clearLocalData();
             clearToken();
             clearCollabUser();
-            localStorage.removeItem("eventsCheckpoint");
-            localStorage.removeItem("challengesCheckpoint");
-            localStorage.removeItem("notesCheckpoint");
             navigate("/login");
         } catch {
             setDeleteError("Could not reach server");
