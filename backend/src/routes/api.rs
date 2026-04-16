@@ -6,6 +6,7 @@ use crate::error::AppError;
 use crate::models::EventRole;
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
+use crate::utils::now_ms;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -41,7 +42,7 @@ async fn list_members(
     .bind(&auth.user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if !is_member {
         return Err(AppError::Forbidden);
@@ -57,7 +58,7 @@ async fn list_members(
     .bind(&event_id)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     let result = members.into_iter().map(|(user_id, username, role)| MemberInfo {
         user_id,
@@ -82,7 +83,7 @@ async fn invite_user(
     .bind(&auth.user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if role != Some(EventRole::Owner) {
         return Err(AppError::Forbidden);
@@ -95,7 +96,7 @@ async fn invite_user(
     .bind(&body.username)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
+    ?
     .ok_or(AppError::BadRequest("User not found".into()))?;
 
     let already_member = sqlx::query_scalar::<_, bool>(
@@ -105,13 +106,13 @@ async fn invite_user(
     .bind(&user.0)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if already_member {
         return Err(AppError::BadRequest("User is already a member".into()));
     }
 
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = now_ms();
 
     sqlx::query(
         "INSERT INTO event_members (event_id, user_id, role, joined_at) VALUES ($1, $2, 'member', $3)"
@@ -121,7 +122,7 @@ async fn invite_user(
     .bind(now)
     .execute(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     Ok(Json(MemberInfo {
         user_id: user.0,
@@ -143,7 +144,7 @@ async fn kick_user(
     .bind(&auth.user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if role != Some(EventRole::Owner) {
         return Err(AppError::Forbidden);
@@ -159,7 +160,7 @@ async fn kick_user(
         .bind(&target_user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     Ok(())
 }
@@ -177,7 +178,7 @@ async fn get_profile(
         .bind(&auth.user_id)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
+        ?
         .ok_or(AppError::Unauthorized)?;
 
     Ok(Json(ProfileResponse { username }))
@@ -206,7 +207,7 @@ async fn change_password(
         .bind(&auth.user_id)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
+        ?
         .ok_or(AppError::Unauthorized)?;
 
     if bcrypt::verify(&body.current_password, &hash).unwrap_or(false) == false {
@@ -214,14 +215,14 @@ async fn change_password(
     }
 
     let new_hash = bcrypt::hash(&body.new_password, bcrypt::DEFAULT_COST)
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
         .bind(&new_hash)
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     Ok(())
 }
@@ -240,7 +241,7 @@ async fn delete_account(
         .bind(&auth.user_id)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
+        ?
         .ok_or(AppError::Unauthorized)?;
 
     if bcrypt::verify(&body.password, &hash).unwrap_or(false) == false {
@@ -253,7 +254,7 @@ async fn delete_account(
     .bind(&auth.user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if owns_event {
         return Err(AppError::BadRequest("You own one or more events. Delete them before deleting your account.".into()));
@@ -264,37 +265,37 @@ async fn delete_account(
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     sqlx::query("DELETE FROM event_members WHERE event_id IN (SELECT id FROM events WHERE created_by = $1)")
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     sqlx::query("DELETE FROM events WHERE created_by = $1")
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     sqlx::query("DELETE FROM invite_joins WHERE user_id = $1")
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     sqlx::query("DELETE FROM event_members WHERE user_id = $1")
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(&auth.user_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     Ok(())
 }

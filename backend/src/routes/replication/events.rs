@@ -4,6 +4,7 @@ use crate::error::AppError;
 use crate::models::{EventDoc, EventRole};
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
+use crate::utils::now_ms;
 use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
 
 pub fn router() -> Router<AppState> {
@@ -32,7 +33,7 @@ async fn pull(
             .bind(&auth.user_id)
             .fetch_all(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
+            ?
         }
         Some(cp) => {
             sqlx::query_as::<_, EventDoc>(
@@ -49,7 +50,7 @@ async fn pull(
             .bind(limit)
             .fetch_all(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
+            ?
         }
     };
 
@@ -74,7 +75,7 @@ async fn push(
     for row in req.rows {
         let mut incoming = row.new_document_state;
 
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = now_ms();
         incoming.updated_at = incoming.updated_at.min(now);
 
         let exists = sqlx::query_scalar::<_, bool>(
@@ -83,7 +84,7 @@ async fn push(
         .bind(&incoming.id)
         .fetch_one(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         if !exists && auth.event_based {
             continue;
@@ -97,7 +98,7 @@ async fn push(
             .bind(&auth.user_id)
             .fetch_optional(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+            ?;
 
             match member {
                 None | Some(EventRole::Member) => continue,
@@ -133,7 +134,7 @@ async fn push(
         .bind(&incoming.flag_format)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         if !exists {
             if let Some(ref doc) = applied {
@@ -145,7 +146,7 @@ async fn push(
                 .bind(now)
                 .execute(&state.db)
                 .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+                ?;
             }
         }
 
@@ -157,7 +158,7 @@ async fn push(
             .bind(&incoming.id)
             .fetch_optional(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+            ?;
 
             if let Some(doc) = server_doc {
                 conflicts.push(doc);

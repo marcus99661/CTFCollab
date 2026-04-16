@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.8.8", features = ["ws"] }
-tokio = { version = "1.51.1", features = ["rt-multi-thread", "macros", "time"] }
+axum = { version = "0.8.9", features = ["ws"] }
+tokio = { version = "1.52.0", features = ["rt-multi-thread", "macros", "time"] }
 serde = { version = "1.0.228", features = ["derive"] }
 tower-http = { version = "0.6.8", features = ["trace", "cors"] }
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }

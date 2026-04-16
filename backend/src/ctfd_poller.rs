@@ -3,6 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::routes::ctfd::{ctfd_fetch, ctfd_fetch_challenge};
+use crate::utils::now_ms;
 
 pub fn start_poller(db: PgPool) {
     tokio::spawn(async move {
@@ -14,7 +15,7 @@ pub fn start_poller(db: PgPool) {
 }
 
 async fn poll(db: &PgPool) {
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = now_ms();
 
     let configs = match sqlx::query_as::<_, (String, String, Option<String>, String)>(
         "SELECT c.event_id, c.ctfd_url, c.ctfd_credential, c.ctfd_auth_type
@@ -81,7 +82,7 @@ async fn poll_event(db: &PgPool, event_id: &str, ctfd_url: &str, credential: &st
 
         let challenge_id = Uuid::new_v4().to_string();
         let note_id = Uuid::new_v4().to_string();
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = now_ms();
 
         if let Err(e) = sqlx::query(
             "INSERT INTO notes (id, title, updated_at, is_deleted) VALUES ($1, $2, $3, false)"

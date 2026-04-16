@@ -113,7 +113,7 @@ async fn get_ctfd_row(event_id: &str, state: &AppState) -> Result<CtfdRow, AppEr
     .bind(event_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?
+    ?
     .ok_or(AppError::BadRequest("CTFd not configured for this event".into()))?;
 
     Ok(CtfdRow { ctfd_url: row.0, credential: row.1, auth_type: row.2 })
@@ -142,7 +142,7 @@ pub async fn ctfd_fetch(url: &str, auth_type: &str, credential: &str) -> Result<
         return Err(AppError::Internal(format!("CTFd returned {}", res.status())));
     }
 
-    let text = res.text().await.map_err(|e| AppError::Internal(e.to_string()))?;
+    let text = res.text().await?;
 
     // If auth fails then the server returns html
     if text.trim_start().starts_with('<') {
@@ -167,7 +167,7 @@ async fn require_member(user_id: &str, event_id: &str, state: &AppState) -> Resu
     .bind(user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if !is_member {
         return Err(AppError::Forbidden);
@@ -183,7 +183,7 @@ async fn require_owner(user_id: &str, event_id: &str, state: &AppState) -> Resul
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     if role != Some(EventRole::Owner) {
         return Err(AppError::Forbidden);
@@ -237,7 +237,7 @@ async fn set_config(
     .bind(&body.auth_type)
     .execute(&state.db)
     .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    ?;
 
     let (test_ok, test_message) = match &body.credential {
         Some(cred) => match ctfd_fetch(&format!("{}/api/v1/challenges", url), &body.auth_type, cred).await {
@@ -269,7 +269,7 @@ async fn delete_config(
         .bind(&event_id)
         .execute(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     Ok(StatusCode::NO_CONTENT)
 }

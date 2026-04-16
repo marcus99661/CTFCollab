@@ -4,6 +4,8 @@ use axum::{
     routing::get,
     Router,
 };
+use crate::error::AppError;
+use crate::utils::now_ms;
 use axum::extract::ws::{Message, WebSocket};
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::{SinkExt, StreamExt};
@@ -168,7 +170,7 @@ pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(note_id): Path<String>,
     State(state): State<AppState>,
-) -> Result<impl IntoResponse, crate::error::AppError> {
+) -> Result<impl IntoResponse, AppError> {
     // Notes have no event_id - look up membership through the challenge that owns this note
     let is_member = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(
@@ -181,10 +183,10 @@ pub async fn ws_handler(
     .bind(&auth.user_id)
     .fetch_one(&state.db)
     .await
-    .map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
+    ?;
 
     if !is_member {
-        return Err(crate::error::AppError::Forbidden);
+        return Err(AppError::Forbidden);
     }
 
     Ok(ws.on_upgrade(move |socket| handle_ws(socket, note_id, state)))
@@ -341,9 +343,3 @@ pub fn router() -> Router<AppState> {
     Router::new().route("/yjs/{note_id}", get(ws_handler))
 }
 
-fn now_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as i64
-}

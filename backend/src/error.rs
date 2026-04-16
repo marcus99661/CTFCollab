@@ -12,6 +12,30 @@ pub enum AppError {
     Forbidden,
 }
 
+impl From<sqlx::Error> for AppError {
+    fn from(e: sqlx::Error) -> Self {
+        AppError::Internal(e.to_string())
+    }
+}
+
+impl From<bcrypt::BcryptError> for AppError {
+    fn from(e: bcrypt::BcryptError) -> Self {
+        AppError::Internal(e.to_string())
+    }
+}
+
+impl From<reqwest::Error> for AppError {
+    fn from(e: reqwest::Error) -> Self {
+        AppError::Internal(e.to_string())
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(e: serde_json::Error) -> Self {
+        AppError::Internal(e.to_string())
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, msg) = match self {

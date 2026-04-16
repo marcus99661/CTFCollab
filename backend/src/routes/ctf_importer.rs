@@ -34,13 +34,13 @@ async fn list_events(
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0")
         .send()
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
-    let body = res.text().await.map_err(|e| AppError::Internal(e.to_string()))?;
+    let body = res.text().await?;
     tracing::info!("ctftime response: {}", body);
 
     let events = serde_json::from_str::<Vec<CtftimeEvent>>(&body)
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     Ok(Json(events))
 }
@@ -61,11 +61,11 @@ async fn list_running(
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0")
         .send()
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
-    let body = res.text().await.map_err(|e| AppError::Internal(e.to_string()))?;
+    let body = res.text().await?;
     let mut events = serde_json::from_str::<Vec<CtftimeEvent>>(&body)
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
     events.retain(|e| {
         let started = chrono::DateTime::parse_from_rfc3339(&e.start)
             .map(|t| t.timestamp() <= now_ts)
@@ -90,12 +90,12 @@ async fn get_event(
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0")
         .send()
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     let event = res
         .json::<CtftimeEvent>()
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
     Ok(Json(event))
 }

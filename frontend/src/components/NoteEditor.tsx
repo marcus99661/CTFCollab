@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getToken, getCollabUser, setCollabUser } from "../auth";
+import { getToken, getCollabUser } from "../auth";
 import { nodeToMarkdown } from "../utils";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -10,21 +10,8 @@ import { WebsocketProvider } from "y-websocket";
 import { IndexeddbPersistence } from "y-indexeddb";
 import "../styles/noteEditor.css";
 
-const CURSOR_COLORS = [
-    "#958DF1", "#F98181", "#FBBC88", "#FAF594",
-    "#70CFF8", "#94FADB", "#B9F18D", "#f9a8d4",
-];
-
 function getUserInfo(): { name: string; color: string } {
-    const stored = getCollabUser();
-    if (stored) return stored;
-
-    const info = {
-        name: `User ${Math.floor(Math.random() * 900) + 100}`,
-        color: CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)],
-    };
-    setCollabUser(info.name, info.color);
-    return info;
+    return getCollabUser()!;
 }
 
 function getWsBaseUrl(): string {

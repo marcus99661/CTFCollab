@@ -5,6 +5,7 @@ use crate::models::ChallengeDoc;
 use crate::models::EventRole;
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
+use crate::utils::now_ms;
 use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
 
 pub fn router() -> Router<AppState> {
@@ -33,7 +34,7 @@ async fn pull(
             .bind(&auth.user_id)
             .fetch_all(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
+            ?
         }
         Some(cp) => {
             sqlx::query_as::<_, ChallengeDoc>(
@@ -51,7 +52,7 @@ async fn pull(
             .bind(limit)
             .fetch_all(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
+            ?
         }
     };
 
@@ -69,7 +70,7 @@ async fn pull(
         .bind(&auth.user_id)
         .fetch_one(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         Some(Checkpoint { id: last.id.clone(), updated_at: effective_at })
     } else {
@@ -92,7 +93,7 @@ async fn push(
     for row in req.rows {
         let mut incoming = row.new_document_state;
 
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = now_ms();
         incoming.updated_at = incoming.updated_at.min(now);
 
         // Check the user is a member of the event this challenge belongs to
@@ -103,7 +104,7 @@ async fn push(
         .bind(&auth.user_id)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         match role {
             None => continue,
@@ -117,7 +118,7 @@ async fn push(
                 .bind(&incoming.id)
                 .fetch_optional(&state.db)
                 .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+                ?;
 
                 match existing {
                     None => continue,
@@ -174,7 +175,7 @@ async fn push(
         .bind(incoming.ctfd_id)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         if applied.is_none() {
             let server_doc: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(
@@ -184,7 +185,7 @@ async fn push(
             .bind(&incoming.id)
             .fetch_optional(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+            ?;
 
             if let Some(doc) = server_doc {
                 conflicts.push(doc);

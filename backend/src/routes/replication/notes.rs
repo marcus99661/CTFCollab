@@ -33,7 +33,7 @@ async fn pull(
             .bind(limit)
             .fetch_all(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
+            ?
         }
         Some(cp) => {
             sqlx::query_as::<_, NoteDoc>(
@@ -51,7 +51,7 @@ async fn pull(
             .bind(limit)
             .fetch_all(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?
+            ?
         }
     };
 
@@ -99,7 +99,7 @@ async fn push(
         .bind(&auth.user_id)
         .fetch_one(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         if is_linked_but_not_member {
             return Err(AppError::Forbidden);
@@ -121,7 +121,7 @@ async fn push(
         .bind(incoming.is_deleted)
         .fetch_optional(&state.db)
         .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        ?;
 
         if applied.is_none() {
             let server_doc: Option<NoteDoc> = sqlx::query_as::<_, NoteDoc>(
@@ -130,7 +130,7 @@ async fn push(
             .bind(&incoming.id)
             .fetch_optional(&state.db)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+            ?;
 
             if let Some(doc) = server_doc {
                 conflicts.push(doc);
