@@ -70,6 +70,7 @@ pub struct ChallengeDoc {
     pub flag: Option<String>,
     pub solved_by: Option<String>,
     pub solvers: Vec<String>,
+    #[serde(default)]
     pub description: String,
     pub ctfd_id: Option<i32>,
 }

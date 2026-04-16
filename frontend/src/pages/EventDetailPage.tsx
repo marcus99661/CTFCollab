@@ -517,6 +517,8 @@ export default function EventDetailPage() {
                 flag: null,
                 solvedBy: null,
                 solvers: [],
+                description: "",
+                ctfdId: null,
             });
         } catch (e) {
             console.error("createChallenge failed:", e);
