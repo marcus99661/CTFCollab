@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getDb, type EventDoc, type ChallengeDoc } from "../db";
 import { startEventsAutoSync } from "../sync/eventsSync";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
+import { startNotePrefetch } from "../notePrefetch";
 import { makeId, nodeToMarkdown } from "../utils";
 import { authFetch, getUserIdFromToken } from "../auth";
 import "../styles/ui.css";
@@ -417,6 +418,27 @@ export default function EventDetailPage() {
 
     const myUserId = getUserIdFromToken();
     const countdown = useCountdown(event);
+
+    const prefetchStartedFor = useRef<string | null>(null);
+    const prefetchCancelRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        if (!id || prefetchStartedFor.current === id) return;
+        if (challenges.length === 0) return;
+        prefetchStartedFor.current = id;
+        const noteIds = challenges
+            .map(c => c.noteId)
+            .filter((x): x is string => !!x);
+        prefetchCancelRef.current = startNotePrefetch(noteIds);
+    }, [id, challenges]);
+
+    useEffect(() => {
+        return () => {
+            prefetchCancelRef.current?.();
+            prefetchCancelRef.current = null;
+            prefetchStartedFor.current = null;
+        };
+    }, [id]);
 
     // If members haven't synced yet but the event exists locally, get role from createdBy
     const effectiveRole = myRole ?? (event?.createdBy === myUserId ? "owner" : null);

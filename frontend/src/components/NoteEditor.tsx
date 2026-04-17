@@ -8,6 +8,7 @@ import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { IndexeddbPersistence } from "y-indexeddb";
+import { markNoteActive, unmarkNoteActive } from "../notePrefetch";
 import "../styles/noteEditor.css";
 
 function getUserInfo(): { name: string; color: string } {
@@ -157,6 +158,7 @@ export default function NoteEditor({ noteId, downloadName }: Props) {
     );
 
     useEffect(() => {
+        markNoteActive(noteId);
         const idb = new IndexeddbPersistence(`note-${noteId}`, ydoc);
         const onStatus = ({ status }: { status: string }) => setConnStatus(status);
         wsProvider.on("status", onStatus);
@@ -167,6 +169,7 @@ export default function NoteEditor({ noteId, downloadName }: Props) {
             wsProvider.destroy();
             idb.destroy();
             ydoc.destroy();
+            unmarkNoteActive(noteId);
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
