@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getToken, getCollabUser } from "../auth";
 import { nodeToMarkdown } from "../utils";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
@@ -9,6 +9,7 @@ import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { markNoteActive, unmarkNoteActive } from "../notePrefetch";
+import { CtfImage, uploadImage } from "../extensions/CtfImage";
 import "../styles/noteEditor.css";
 
 function getUserInfo(): { name: string; color: string } {
@@ -50,7 +51,7 @@ function Divider() {
     return <span className="tb-divider" />;
 }
 
-function Toolbar({ editor, onDownload }: { editor: Editor; onDownload: () => void }) {
+function Toolbar({ editor, onDownload, onInsertImage }: { editor: Editor; onDownload: () => void; onInsertImage: () => void }) {
     return (
         <div className="note-toolbar">
             <TBtn
@@ -135,6 +136,16 @@ function Toolbar({ editor, onDownload }: { editor: Editor; onDownload: () => voi
                 title="Horizontal rule"
             >---</TBtn>
 
+            <Divider />
+
+            <TBtn onClick={onInsertImage} title="Insert image">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                </svg>
+            </TBtn>
+
             <div className="ml-auto">
                 <TBtn onClick={onDownload} title="Download as Markdown">Download note</TBtn>
             </div>
@@ -145,11 +156,14 @@ function Toolbar({ editor, onDownload }: { editor: Editor; onDownload: () => voi
 
 interface Props {
     noteId: string;
+    eventId: string;
     downloadName?: string;
 }
 
 // Parent must use key={noteId} so this component is fully remounted on note switch.
-export default function NoteEditor({ noteId, downloadName }: Props) {
+export default function NoteEditor({ noteId, eventId, downloadName }: Props) {
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const pickInsertPos = useRef<number | null>(null);
     const [connStatus, setConnStatus] = useState("connecting");
     const [ydoc] = useState(() => new Y.Doc());
     (window as any).ydoc = ydoc; // DEBUG - ydoc.getXmlFragment("default").toString()
@@ -181,8 +195,73 @@ export default function NoteEditor({ noteId, downloadName }: Props) {
                 provider: wsProvider,
                 user: getUserInfo(),
             }),
+            CtfImage,
         ],
+        editorProps: {
+            handlePaste(view, event) {
+                const items = event.clipboardData?.items;
+                if (!items) return false;
+                for (const item of items) {
+                    if (item.type.startsWith("image/")) {
+                        const file = item.getAsFile();
+                        if (file) {
+                            event.preventDefault();
+                            insertImageFile(file, view.state.selection.to);
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            },
+            handleDrop(view, event) {
+                const files = (event as DragEvent).dataTransfer?.files;
+
+                if (!files || files.length === 0) return false;
+
+                const imageFiles = Array.from(files).filter(f => f.type.startsWith("image/"));
+
+                if (imageFiles.length === 0) return false;
+
+                const de = event as DragEvent;
+                const coords = view.posAtCoords({ left: de.clientX, top: de.clientY });
+                const dropPos = coords?.pos ?? view.state.selection.to;
+                event.preventDefault();
+
+                for (const f of imageFiles) insertImageFile(f, dropPos);
+
+                return true;
+            },
+        },
     });
+
+    async function insertImageFile(file: File, atPos?: number) {
+        if (!editor) return;
+
+        const pos = atPos ?? editor.state.selection.to;
+        const id = await uploadImage(file, eventId);
+
+        if (!id || !editor) return;
+
+        editor
+            .chain()
+            .insertContentAt(pos, { type: "ctfImage", attrs: { imageId: id } })
+            .focus()
+            .run();
+    }
+
+    function pickImage() {
+        pickInsertPos.current = editor?.state.selection.to ?? null;
+        fileInputRef.current?.click();
+    }
+
+    async function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        const pos = pickInsertPos.current ?? undefined;
+        pickInsertPos.current = null;
+        await insertImageFile(file, pos);
+    }
 
     const statusColor =
         connStatus === "connected"  ? "#4caf50" :
@@ -202,7 +281,14 @@ export default function NoteEditor({ noteId, downloadName }: Props) {
 
     return (
         <div className="note-editor-wrap">
-            {editor && <Toolbar editor={editor} onDownload={downloadMarkdown} />}
+            {editor && <Toolbar editor={editor} onDownload={downloadMarkdown} onInsertImage={pickImage} />}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileChosen}
+            />
             <div className="note-editor-status">
                 <span style={{ color: statusColor }}>●</span> {connStatus}
             </div>

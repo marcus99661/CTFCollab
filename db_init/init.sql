@@ -89,3 +89,30 @@ CREATE TABLE IF NOT EXISTS event_ctfd_config (
     ctfd_credential TEXT,
     ctfd_auth_type TEXT NOT NULL DEFAULT 'token'
 );
+
+CREATE TABLE IF NOT EXISTS images (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    uploaded_by TEXT NOT NULL REFERENCES users(id),
+    mime_type TEXT NOT NULL,
+    bytes BYTEA NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS images_event_idx ON images(event_id);
+
+CREATE TABLE IF NOT EXISTS challenge_files (
+    id TEXT PRIMARY KEY,
+    challenge_id TEXT NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    bytes BYTEA NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    uploaded_by TEXT REFERENCES users(id),
+    source TEXT NOT NULL DEFAULT 'user',
+    ctfd_path TEXT,
+    created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS challenge_files_challenge_idx ON challenge_files(challenge_id);
+CREATE UNIQUE INDEX IF NOT EXISTS challenge_files_ctfd_unique ON challenge_files(challenge_id, ctfd_path) WHERE ctfd_path IS NOT NULL;

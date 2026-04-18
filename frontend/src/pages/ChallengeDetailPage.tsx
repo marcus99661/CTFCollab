@@ -305,7 +305,7 @@ export default function ChallengeDetailPage() {
 
                 <div className="flex-1 overflow-auto border border-border rounded-md px-4 py-3">
                     {challenge.noteId
-                        ? <NoteEditor key={challenge.noteId} noteId={challenge.noteId} downloadName={challenge.title} />
+                        ? <NoteEditor key={challenge.noteId} noteId={challenge.noteId} eventId={challenge.eventId} downloadName={challenge.title} />
                         : <div className="text-muted text-sm py-8 text-center">No note attached to this challenge.</div>
                     }
                 </div>

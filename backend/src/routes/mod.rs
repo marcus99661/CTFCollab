@@ -5,4 +5,5 @@ pub mod yjs;
 pub mod api;
 pub mod ctf_importer;
 pub mod ctfd;
+pub mod images;
 pub mod invite;
