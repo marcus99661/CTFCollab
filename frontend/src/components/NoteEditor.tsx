@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getToken, getCollabUser } from "../auth";
-import { nodeToMarkdown } from "../utils";
+import { nodeToMarkdown, downloadBlob } from "../utils";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -342,12 +342,7 @@ export default function NoteEditor({ noteId, eventId, downloadName }: Props) {
         if (!editor) return;
         const md = nodeToMarkdown(editor.getJSON());
         const blob = new Blob([md], { type: "text/markdown" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = (downloadName ?? "note") + ".md";
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(blob, (downloadName ?? "note") + ".md");
     }
 
     return (

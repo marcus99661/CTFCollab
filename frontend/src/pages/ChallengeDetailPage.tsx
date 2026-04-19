@@ -4,6 +4,7 @@ import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
 import { getCollabUser, authFetch, getUserIdFromToken } from "../auth";
+import { downloadBlob } from "../utils";
 import NoteEditor from "../components/NoteEditor";
 import "../styles/ui.css";
 
@@ -22,6 +23,67 @@ function formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function EditChallengeOverlay({ challenge, onClose, onSave }: {
+    challenge: ChallengeDoc;
+    onClose: () => void;
+    onSave: (title: string, category: string, points: string, url: string, description: string) => void;
+}) {
+    const [title, setTitle] = useState(challenge.title);
+    const [category, setCategory] = useState(challenge.category);
+    const [points, setPoints] = useState(String(challenge.points || ""));
+    const [url, setUrl] = useState(challenge.url);
+    const [description, setDescription] = useState(challenge.description ?? "");
+
+    function submit() {
+        if (!title.trim()) return;
+
+        onSave(title, category, points, url, description);
+        onClose();
+    }
+
+    return (
+        <div className="overlay" onClick={onClose}>
+            <div className="overlay-box" onClick={e => e.stopPropagation()}>
+                <div className="overlay-box-header">
+                    <h5 className="m-0 text-[15px] font-semibold">Edit challenge</h5>
+                </div>
+                <div className="overlay-box-body">
+                    <label className="form-field">
+                        <span className="form-field-label">Name</span>
+                        <input className="input" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Points<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="0" />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Category<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Web, Pwn, Crypto..." />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">URL<span className="form-field-optional">(optional)</span></span>
+                        <input className="input" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
+                    </label>
+                    <label className="form-field">
+                        <span className="form-field-label">Description<span className="form-field-optional">(optional)</span></span>
+                        <textarea
+                            className="input"
+                            rows={4}
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            style={{ height: "auto", padding: "7px 12px", resize: "vertical" }}
+                        />
+                    </label>
+                    <div className="form-actions">
+                        <button className="btn btn-primary" onClick={submit} disabled={!title.trim()}>Save</button>
+                        <button className="btn" onClick={onClose}>Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function ChallengeFiles({ challengeId, canDelete }: { challengeId: string; canDelete: boolean }) {
@@ -73,13 +135,7 @@ function ChallengeFiles({ challengeId, canDelete }: { challengeId: string; canDe
 
         if (!res.ok) return;
 
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = f.filename;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(await res.blob(), f.filename);
     }
 
     async function remove(f: ChallengeFile) {
@@ -234,16 +290,19 @@ export default function ChallengeDetailPage() {
         setFlagInput("");
     }
 
-    async function editChallenge(title: string, category: string, points: string, url: string) {
+    async function editChallenge(title: string, category: string, points: string, url: string, description: string) {
         if (!id) return;
+
         const db = await getDb();
         const doc = await db.challenges.findOne(id).exec();
         if (!doc) return;
+
         await doc.patch({
             title: title.trim(),
             category: category.trim(),
             points: Number(points) || 0,
             url: url.trim(),
+            description: description,
             updatedAt: Date.now(),
         });
     }
@@ -251,9 +310,11 @@ export default function ChallengeDetailPage() {
     async function deleteChallenge() {
         if (!id || !challenge) return;
         if (!confirm(`Delete "${challenge.title}"? This cannot be undone.`)) return;
+
         const db = await getDb();
         const doc = await db.challenges.findOne(id).exec();
         if (!doc) return;
+
         await doc.patch({ isDeleted: true, updatedAt: Date.now() });
         navigate(`/events/${challenge.eventId}`);
     }
@@ -286,51 +347,6 @@ export default function ChallengeDetailPage() {
         return <div className="text-muted text-sm py-8 text-center">Challenge not found.</div>;
     }
 
-    function EditChallengeOverlay({ onClose }: { onClose: () => void }) {
-        const [title, setTitle] = useState(challenge!.title);
-        const [category, setCategory] = useState(challenge!.category);
-        const [points, setPoints] = useState(String(challenge!.points || ""));
-        const [url, setUrl] = useState(challenge!.url);
-
-        function submit() {
-            if (!title.trim()) return;
-            editChallenge(title, category, points, url);
-            onClose();
-        }
-
-        return (
-            <div className="overlay" onClick={onClose}>
-                <div className="overlay-box" onClick={e => e.stopPropagation()}>
-                    <div className="overlay-box-header">
-                        <h5 className="m-0 text-[15px] font-semibold">Edit challenge</h5>
-                    </div>
-                    <div className="overlay-box-body">
-                        <label className="form-field">
-                            <span className="form-field-label">Name</span>
-                            <input className="input" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
-                        </label>
-                        <label className="form-field">
-                            <span className="form-field-label">Points<span className="form-field-optional">(optional)</span></span>
-                            <input className="input" type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="0" />
-                        </label>
-                        <label className="form-field">
-                            <span className="form-field-label">Category<span className="form-field-optional">(optional)</span></span>
-                            <input className="input" value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Web, Pwn, Crypto..." />
-                        </label>
-                        <label className="form-field">
-                            <span className="form-field-label">URL<span className="form-field-optional">(optional)</span></span>
-                            <input className="input" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
-                        </label>
-                        <div className="form-actions">
-                            <button className="btn btn-primary" onClick={submit} disabled={!title.trim()}>Save</button>
-                            <button className="btn" onClick={onClose}>Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="flex flex-col h-[calc(100vh-52px)]">
             <div className="px-5 py-2.5 border-b border-border flex items-center gap-4 shrink-0">
@@ -361,7 +377,7 @@ export default function ChallengeDetailPage() {
                     )}
                 </div>
             </div>
-            {showEdit && <EditChallengeOverlay onClose={() => setShowEdit(false)} />}
+            {showEdit && <EditChallengeOverlay challenge={challenge} onClose={() => setShowEdit(false)} onSave={editChallenge} />}
 
             <div className="flex-1 flex overflow-hidden gap-4 p-4">
                 <div className="w-[260px] shrink-0 overflow-auto border border-border rounded-md">

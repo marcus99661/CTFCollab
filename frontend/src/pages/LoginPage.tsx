@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { setToken, setCollabUser } from "../auth";
+import { setToken, setCollabUser, pickCollabColor } from "../auth";
 import "../styles/ui.css";
 
 export default function LoginPage() {
@@ -38,10 +38,7 @@ export default function LoginPage() {
             }
 
             setToken(json.token);
-
-            const colors = ["#958DF1", "#F98181", "#FBBC88", "#70CFF8", "#94FADB", "#B9F18D"];
-            const color = colors[json.username.charCodeAt(0) % colors.length];
-            setCollabUser(json.username, color);
+            setCollabUser(json.username, pickCollabColor(json.username));
             navigate("/");
         } catch {
             setError("Could not reach server");

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { setToken, getToken, setCollabUser } from "../auth";
+import { setToken, getToken, setCollabUser, pickCollabColor } from "../auth";
 import "../styles/ui.css";
 
 interface InviteInfo {
@@ -75,8 +75,7 @@ export default function InvitePage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error ?? "Registration failed");
             setToken(json.token);
-            const color = `hsl(${Math.floor(Math.random() * 360)}, 60%, 60%)`;
-            setCollabUser(username, color);
+            setCollabUser(username, pickCollabColor(username));
             navigate(`/events/${info!.event_id}`);
         } catch (e: any) {
             setError(e.message);
@@ -97,7 +96,7 @@ export default function InvitePage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error ?? "Login failed");
             setToken(json.token);
-            setCollabUser(username, `hsl(${Math.floor(Math.random() * 360)}, 60%, 60%)`);
+            setCollabUser(username, pickCollabColor(username));
 
             const joinRes = await fetch(`/api/invite/${token}/join`, {
                 method: "POST",

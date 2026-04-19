@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { authFetch, getUserIdFromToken } from "../auth";
+import { authFetch } from "../auth";
 import { getDb } from "../db";
+import { useEventRole } from "../hooks/useEventRole";
 import "../styles/ui.css";
 
 type Tab = "scoreboard" | "challenges";
@@ -33,7 +34,8 @@ export default function CtfdEventPage() {
     const { id } = useParams<{ id: string }>();
 
     const [config, setConfig] = useState<CtfdConfig | null>(null);
-    const [isOwner, setIsOwner] = useState(false);
+    const { role } = useEventRole(id);
+    const isOwner = role === "owner";
     const [configLoading, setConfigLoading] = useState(true);
     const [showConfigForm, setShowConfigForm] = useState(false);
     const [urlInput, setUrlInput] = useState("");
@@ -58,16 +60,7 @@ export default function CtfdEventPage() {
     async function loadConfig() {
         setConfigLoading(true);
         try {
-            const [membersRes, configRes] = await Promise.all([
-                authFetch(`/api/events/${id}/members`),
-                authFetch(`/api/events/${id}/ctfd/config`),
-            ]);
-
-            if (membersRes.ok) {
-                const members: { user_id: string; role: string }[] = await membersRes.json();
-                const me = members.find(m => m.user_id === getUserIdFromToken());
-                setIsOwner(me?.role === "owner");
-            }
+            const configRes = await authFetch(`/api/events/${id}/ctfd/config`);
 
             if (configRes.ok) {
                 const data: CtfdConfig = await configRes.json();

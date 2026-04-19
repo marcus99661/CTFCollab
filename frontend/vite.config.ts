@@ -18,12 +18,29 @@ export default defineConfig({
       "/replication": { target: "http://localhost:3000", changeOrigin: true },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+
+          if (id.includes("@tiptap") || id.includes("prosemirror")) return "tiptap";
+          if (id.includes("yjs") || id.includes("y-websocket") || id.includes("y-prosemirror") || id.includes("y-indexeddb") || id.includes("y-protocols")) return "yjs";
+          if (id.includes("rxdb") || id.includes("dexie")) return "rxdb";
+          if (id.includes("react-router")) return "router";
+          if (id.includes("react-dom") || id.includes("react/") || id.includes("scheduler")) return "react";
+        },
+      },
+    },
+  },
   plugins: [react(), tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
       devOptions: { enabled: true }, // enables SW in dev
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,woff,woff2}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
         name: "CTFCollab",

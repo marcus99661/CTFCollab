@@ -5,11 +5,10 @@ import { startEventsAutoSync } from "../sync/eventsSync";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
 import { startNotePrefetch } from "../notePrefetch";
-import { makeId, nodeToMarkdown } from "../utils";
+import { makeId, nodeToMarkdown, slugify, downloadBlob, tsToDatetimeLocal } from "../utils";
 import { authFetch, getUserIdFromToken } from "../auth";
+import { useEventRole } from "../hooks/useEventRole";
 import "../styles/ui.css";
-
-type Member = { user_id: string; username: string; role: string };
 
 interface PlacementInfo {
     pos: number;
@@ -300,13 +299,6 @@ function ChallengeCard({ ch }: { ch: ChallengeDoc }) {
     );
 }
 
-function tsToDatetimeLocal(ts: number | null | undefined): string {
-    if (!ts) return "";
-    const d = new Date(ts);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function EditEventOverlay({ event, onClose, onSave }: {
     event: EventDoc;
     onClose: () => void;
@@ -419,14 +411,13 @@ export default function EventDetailPage() {
     const [showEdit, setShowEdit] = useState(false);
     const [showInvite, setShowInvite] = useState(false);
     const [syncStatus, setSyncStatus] = useState("Loading...");
-    const [members, setMembers] = useState<Member[]>([]);
-    const [myRole, setMyRole] = useState<string | null>(null);
     const [inviteUsername, setInviteUsername] = useState("");
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [placement, setPlacement] = useState<PlacementInfo | null>(null);
 
     const myUserId = getUserIdFromToken();
     const countdown = useCountdown(event);
+    const { members, role: myRole, refresh: refreshMembers } = useEventRole(id);
 
     const prefetchStartedFor = useRef<string | null>(null);
     const prefetchCancelRef = useRef<(() => void) | null>(null);
@@ -467,7 +458,7 @@ export default function EventDetailPage() {
                 onStatus: (status) => {
                     if (status === "Synced" && !membersLoaded) {
                         membersLoaded = true;
-                        fetchMembers();
+                        refreshMembers();
                     }
                 },
             });
@@ -491,7 +482,6 @@ export default function EventDetailPage() {
             });
 
             setSyncStatus("Ready");
-            fetchMembers();
             fetchPlacement();
         }
         init().catch((e) => {
@@ -573,30 +563,11 @@ export default function EventDetailPage() {
             idb.destroy();
             ydoc.destroy();
             const md = nodeToMarkdown(json);
-            // skip challenges with empty notes
-            //if (!md.trim()) continue;
-            const filename = ch.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || ch.id;
+            const filename = slugify(ch.title) || ch.id;
             zip.file(filename + ".md", md);
         }
         const blob = await zip.generateAsync({ type: "blob" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = (event?.name ?? "notes").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") + ".zip";
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    async function fetchMembers() {
-        if (!id) return;
-        try {
-            const res = await authFetch(`/api/events/${id}/members`);
-            if (!res.ok) return;
-            const list: Member[] = await res.json();
-            setMembers(list);
-            const me = list.find(m => m.user_id === myUserId);
-            setMyRole(me?.role ?? null);
-        } catch {}
+        downloadBlob(blob, slugify(event?.name ?? "notes") + ".zip");
     }
 
     async function fetchPlacement() {
@@ -620,7 +591,7 @@ export default function EventDetailPage() {
             const json = await res.json();
             if (!res.ok) { setInviteError(json.error ?? "Failed to invite"); return; }
             setInviteUsername("");
-            fetchMembers();
+            refreshMembers();
         } catch { setInviteError("Could not reach server"); }
     }
 
@@ -628,7 +599,7 @@ export default function EventDetailPage() {
         if (!id) return;
         try {
             await authFetch(`/api/events/${id}/members/${userId}`, { method: "DELETE" });
-            fetchMembers();
+            refreshMembers();
         } catch {}
     }
 

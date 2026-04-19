@@ -18,6 +18,14 @@ export function clearCollabUser(): void {
     localStorage.removeItem(COLLAB_USER_KEY);
 }
 
+export function pickCollabColor(name: string): string {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) {
+        h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
+    }
+    return `hsl(${Math.abs(h) % 360}, 70%, 72%)`;
+}
+
 function decodeTokenPayload(): Record<string, any> | null {
     const token = getToken();
     if (!token) return null;
