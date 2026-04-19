@@ -55,6 +55,14 @@ export function nodeToMarkdown(node: any, listDepth = 0): string {
                 .join("\n");
         case "listItem":
             return (node.content ?? []).map((c: any) => nodeToMarkdown(c, listDepth)).join("\n");
+        case "taskList":
+            return (node.content ?? [])
+                .map((c: any) => " ".repeat(listDepth * 2) + nodeToMarkdown(c, listDepth + 1))
+                .join("\n");
+        case "taskItem": {
+            const mark = node.attrs?.checked ? "[x]" : "[ ]";
+            return "- " + mark + " " + (node.content ?? []).map((c: any) => nodeToMarkdown(c, listDepth)).join("\n");
+        }
         default:
             return children;
     }
