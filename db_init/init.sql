@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS challenges (
     solved_by TEXT,
     solvers TEXT[] NOT NULL DEFAULT '{}',
     description TEXT NOT NULL DEFAULT '',
-    ctfd_id INTEGER
+    ctfd_id INTEGER,
+    file_count INTEGER NOT NULL DEFAULT 0
 );
 
 

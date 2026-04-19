@@ -1,4 +1,4 @@
-import { createRxDatabase } from "rxdb";
+import { createRxDatabase, removeRxDatabase } from "rxdb";
 import type { RxDatabase } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 
@@ -40,6 +40,7 @@ export type ChallengeDoc = {
     solvers?: string[];
     description: string;
     ctfdId: number | null;
+    fileCount: number;
 };
 
 const noteSchema = {
@@ -99,6 +100,7 @@ const challengeSchema = {
         solvers: { type: "array", items: { type: "string" } },
         description: { type: "string" },
         ctfdId: { type: ["number", "null"] },
+        fileCount: { type: "number" },
     },
     required: ["id", "eventId", "title", "category", "points", "url", "createdAt", "updatedAt", "isDeleted"]
 } as const;
@@ -115,10 +117,33 @@ export function resetDb() {
     dbPromise = null;
 }
 
+async function deleteIndexedDb(name: string): Promise<void> {
+    return new Promise(resolve => {
+        const req = indexedDB.deleteDatabase(name);
+        req.onsuccess = req.onerror = req.onblocked = () => resolve();
+    });
+}
+
+// Used to fix schema miss-match between frontend and backend
 export async function clearLocalData() {
-    const db = await getDb();
-    await db.remove();
+    // Close the RxDB handle cleanly if it's healthy, then force-wipe via removeRxDatabase.
+    try {
+        const db = await getDb();
+        await db.close();
+    } catch {}
     resetDb();
+
+    try {
+        await removeRxDatabase("ctfpad_poc", getRxStorageDexie());
+    } catch {}
+
+    // Wipe every remaining IndexedDB database for this origin.
+    // Covers per-note Yjs stores ("note-<id>") and any Dexie tables RxDB left behind.
+    if (indexedDB.databases) {
+        const dbs = await indexedDB.databases();
+        await Promise.all(dbs.map(d => d.name ? deleteIndexedDb(d.name) : Promise.resolve()));
+    }
+
     localStorage.removeItem("eventsCheckpoint");
     localStorage.removeItem("challengesCheckpoint");
     localStorage.removeItem("notesCheckpoint");

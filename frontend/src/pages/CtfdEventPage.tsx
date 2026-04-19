@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { authFetch, getUserIdFromToken } from "../auth";
 import { getDb } from "../db";
-import { makeId } from "../utils";
 import "../styles/ui.css";
 
 type Tab = "scoreboard" | "challenges";
@@ -165,72 +164,11 @@ export default function CtfdEventPage() {
         setImportResult(null);
         setError(null);
         try {
-            // Fetch fresh challenge list from CTFd
-            const res = await authFetch(`/api/events/${id}/ctfd/challenges`);
+            const res = await authFetch(`/api/events/${id}/ctfd/import`, { method: "POST" });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Failed to fetch challenges");
-            const ctfdChallenges: CtfdChallenge[] = json;
-            setChallenges(ctfdChallenges);
-
-            const db = await getDb();
-            const existing = await db.challenges.find({ selector: { eventId: id, isDeleted: false } }).exec();
-            const existingByCtfdId = new Map(existing.map((d: any) => [d.toJSON().ctfdId, d]));
-
-            let added = 0;
-            let updated = 0;
-            let skipped = 0;
-            const newChallenges: { challengeId: string; ctfdId: number }[] = [];
-
-            for (const ch of ctfdChallenges) {
-                const match = existingByCtfdId.get(ch.id);
-                if (match) {
-                    const doc = (match as any).toJSON();
-                    if (doc.points !== ch.value || doc.category !== ch.category) {
-                        await (match as any).patch({ points: ch.value, category: ch.category, updatedAt: Date.now() });
-                        updated++;
-                    } else {
-                        skipped++;
-                    }
-                    continue;
-                }
-                const challengeId = makeId();
-                const noteId = makeId();
-                await db.notes.insert({ id: noteId, title: ch.name, updatedAt: Date.now(), isDeleted: false });
-                await db.challenges.insert({
-                    id: challengeId,
-                    eventId: id!,
-                    title: ch.name,
-                    category: ch.category,
-                    points: ch.value,
-                    url: "",
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                    isDeleted: false,
-                    noteId,
-                    solved: false,
-                    flag: null,
-                    solvedBy: null,
-                    solvers: [],
-                    description: "",
-                    ctfdId: ch.id,
-                });
-                existingByCtfdId.set(ch.id, true as any);
-                newChallenges.push({ challengeId, ctfdId: ch.id });
-                added++;
-            }
-
-            await Promise.all(newChallenges.map(async ({ challengeId, ctfdId }) => {
-                try {
-                    const res = await authFetch(`/api/events/${id}/ctfd/challenges/${ctfdId}`);
-                    if (!res.ok) return;
-                    const detail = await res.json();
-                    const doc = await db.challenges.findOne(challengeId).exec();
-                    if (doc) await doc.patch({ description: detail.description, updatedAt: Date.now() });
-                } catch {
-                }
-            }));
-
-            setImportResult({ added, updated, skipped });
+            if (!res.ok) throw new Error(json.error ?? "Failed to import challenges");
+            setImportResult({ added: json.added, updated: json.updated, skipped: json.skipped });
+            fetchData("challenges");
         } catch (e: any) {
             setError(e.message);
         } finally {

@@ -1,16 +1,19 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    routing::{delete, get, put},
+    routing::{get, post},
     Json, Router,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::models::EventRole;
 use crate::routes::auth::AuthUser;
+use crate::routes::challenge_files::sync_ctfd_files;
 use crate::state::AppState;
+use crate::utils::now_ms;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -22,6 +25,7 @@ pub fn router() -> Router<AppState> {
         .route("/events/{event_id}/ctfd/placement", get(placement))
         .route("/events/{event_id}/ctfd/challenges", get(challenges))
         .route("/events/{event_id}/ctfd/challenges/{ctfd_id}", get(challenge_detail))
+        .route("/events/{event_id}/ctfd/import", post(import_challenges))
         .route("/events/{event_id}/ctfd/solves", get(solves))
 }
 
@@ -93,6 +97,8 @@ pub struct CtfdChallengeDetail {
     pub description: String,
     pub category: String,
     pub solved_by_me: bool,
+    #[serde(default)]
+    pub files: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -284,7 +290,148 @@ async fn challenge_detail(
     let credential = row.credential.ok_or(AppError::BadRequest("No credential configured".into()))?;
 
     let detail = ctfd_fetch_challenge(&row.ctfd_url, &row.auth_type, &credential, ctfd_id).await?;
+
+    let local_id: Option<String> = sqlx::query_scalar::<_, String>(
+        "SELECT id FROM challenges WHERE event_id = $1 AND ctfd_id = $2 AND is_deleted = false",
+    )
+    .bind(&event_id)
+    .bind(ctfd_id as i32)
+    .fetch_optional(&state.db)
+    .await?;
+
+    if let Some(challenge_id) = local_id {
+        sync_ctfd_files(
+            &state.db,
+            &challenge_id,
+            &detail.name,
+            &event_id,
+            &row.ctfd_url,
+            &row.auth_type,
+            &credential,
+            &detail.files,
+        ).await;
+    }
+
     Ok(Json(detail))
+}
+
+#[derive(Serialize)]
+pub struct ImportResult {
+    pub added: i32,
+    pub updated: i32,
+    pub skipped: i32,
+}
+
+async fn import_challenges(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Path(event_id): Path<String>,
+) -> Result<Json<ImportResult>, AppError> {
+    require_owner(&auth.user_id, &event_id, &state).await?;
+
+    let row = get_ctfd_row(&event_id, &state).await?;
+    let credential = row.credential.ok_or(AppError::BadRequest("No credential configured".into()))?;
+
+    let event_name: String = sqlx::query_scalar::<_, String>("SELECT name FROM events WHERE id = $1")
+        .bind(&event_id)
+        .fetch_one(&state.db)
+        .await?;
+
+    tracing::info!("Starting to import challenges for {}", event_name);
+
+    let text = ctfd_fetch(&format!("{}/api/v1/challenges", row.ctfd_url), &row.auth_type, &credential).await?;
+    let list: Vec<CtfdChallenge> = serde_json::from_str::<CtfdApiResponse<Vec<CtfdChallenge>>>(&text)
+        .map_err(|e| AppError::Internal(format!("CTFd parse error: {} | body: {}", e, &text[..text.len().min(300)])))?
+        .data;
+
+    let existing: Vec<(String, i32, i32, String)> = sqlx::query_as(
+        "SELECT id, ctfd_id, points, category FROM challenges
+         WHERE event_id = $1 AND ctfd_id IS NOT NULL AND is_deleted = false",
+    )
+    .bind(&event_id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let existing_map: std::collections::HashMap<i32, (String, i32, String)> = existing
+        .into_iter()
+        .map(|(id, ctfd_id, points, category)| (ctfd_id, (id, points, category)))
+        .collect();
+
+    let mut added = 0;
+    let mut updated = 0;
+    let mut skipped = 0;
+
+    for ch in list {
+        let ctfd_id = ch.id as i32;
+
+        if let Some((challenge_id, existing_points, existing_category)) = existing_map.get(&ctfd_id) {
+            if *existing_points == ch.value && *existing_category == ch.category {
+                skipped += 1;
+                continue;
+            }
+
+            let now = now_ms();
+            sqlx::query(
+                "UPDATE challenges SET points = $1, category = $2, updated_at = $3 WHERE id = $4",
+            )
+            .bind(ch.value)
+            .bind(&ch.category)
+            .bind(now)
+            .bind(challenge_id)
+            .execute(&state.db)
+            .await?;
+
+            updated += 1;
+            continue;
+        }
+
+        let detail = match ctfd_fetch_challenge(&row.ctfd_url, &row.auth_type, &credential, ch.id).await {
+            Ok(d) => d,
+            Err(e) => {
+                tracing::warn!("CTFd detail fetch failed for {}: {:?}", ch.name, e);
+                continue;
+            }
+        };
+
+        let challenge_id = Uuid::new_v4().to_string();
+        let note_id = Uuid::new_v4().to_string();
+        let now = now_ms();
+
+        sqlx::query(
+            "INSERT INTO notes (id, title, updated_at, is_deleted) VALUES ($1, $2, $3, false)",
+        )
+        .bind(&note_id)
+        .bind(&ch.name)
+        .bind(now)
+        .execute(&state.db)
+        .await?;
+
+        sqlx::query(
+            "INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count)
+             VALUES ($1, $2, $3, $4, $5, '', $6, $6, false, $7, false, null, null, '{}', $8, $9, 0)",
+        )
+        .bind(&challenge_id)
+        .bind(&event_id)
+        .bind(&ch.name)
+        .bind(&detail.category)
+        .bind(ch.value)
+        .bind(now)
+        .bind(&note_id)
+        .bind(&detail.description)
+        .bind(ctfd_id)
+        .execute(&state.db)
+        .await?;
+
+        added += 1;
+
+        if !detail.files.is_empty() {
+            sync_ctfd_files(&state.db, &challenge_id, &ch.name, &event_id, &row.ctfd_url, &row.auth_type, &credential, &detail.files).await;
+        }
+    }
+
+    tracing::info!("Imported {} new challenges for {}", added, event_name);
+
+    Ok(Json(ImportResult { added, updated, skipped }))
 }
 
 async fn scoreboard(

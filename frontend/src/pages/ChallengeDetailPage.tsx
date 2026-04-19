@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getDb, type ChallengeDoc, type EventDoc } from "../db";
 import { startChallengesAutoSync } from "../sync/challengesSync";
@@ -6,6 +6,131 @@ import { startNotesAutoSync } from "../sync/notesSync";
 import { getCollabUser, authFetch, getUserIdFromToken } from "../auth";
 import NoteEditor from "../components/NoteEditor";
 import "../styles/ui.css";
+
+type ChallengeFile = {
+    id: string;
+    challengeId: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    source: string;
+    uploadedBy: string | null;
+    createdAt: number;
+};
+
+function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ChallengeFiles({ challengeId, canDelete }: { challengeId: string; canDelete: boolean }) {
+    const [files, setFiles] = useState<ChallengeFile[] | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const myId = getUserIdFromToken();
+
+    async function refresh() {
+        const res = await authFetch(`/api/challenges/${challengeId}/files`);
+
+        if (!res.ok) return;
+
+        setFiles(await res.json());
+    }
+
+    useEffect(() => {
+        refresh();
+        const id = setInterval(refresh, 15000);
+        return () => clearInterval(id);
+    }, [challengeId]);
+
+    async function upload(file: File) {
+        setError(null);
+        setUploading(true);
+
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const res = await authFetch(`/api/challenges/${challengeId}/files`, { method: "POST", body: fd });
+
+        if (res.ok) {
+            await refresh();
+        } else {
+            const json = await res.json().catch(() => ({}));
+            setError(json.error ?? "Upload failed");
+        }
+
+        setUploading(false);
+
+        if (inputRef.current) {
+            inputRef.current.value = "";
+        }
+    }
+
+    async function download(f: ChallengeFile) {
+        const res = await authFetch(`/api/challenge-files/${f.id}`);
+
+        if (!res.ok) return;
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = f.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function remove(f: ChallengeFile) {
+        if (!confirm(`Delete "${f.filename}"?`)) return;
+
+        const res = await authFetch(`/api/challenge-files/${f.id}`, { method: "DELETE" });
+
+        if (res.ok) {
+            await refresh();
+        }
+    }
+
+    return (
+        <div className="flex flex-col gap-2 pb-3 border-b border-border">
+            <div className="text-xs text-muted font-semibold uppercase">Files</div>
+            {files === null ? (
+                <div className="text-muted text-[13px]">Loading...</div>
+            ) : files.length === 0 ? (
+                <div className="text-muted text-[13px]">No files attached.</div>
+            ) : (
+                <div className="flex flex-col gap-1.5">
+                    {files.map(f => {
+                        const mayDelete = canDelete || f.uploadedBy === myId;
+                        return (
+                            <div key={f.id} className="flex items-center gap-2 text-[13px]">
+                                <button className="btn-text flex-1 text-left truncate" title={f.filename} onClick={() => download(f)}>
+                                    {f.filename}
+                                </button>
+                                <span className="text-muted text-xs shrink-0">{formatSize(f.sizeBytes)}</span>
+                                {f.source === "ctfd" && <span className="text-muted text-[10px] shrink-0">CTFd</span>}
+                                {mayDelete && (
+                                    <button className="btn-text text-danger shrink-0" onClick={() => remove(f)}>x</button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+            <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); }}
+            />
+            <button className="btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
+                {uploading ? "Uploading..." : "Upload file"}
+            </button>
+            {error && <p className="text-danger text-[12px] m-0">{error}</p>}
+        </div>
+    );
+}
 
 export default function ChallengeDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -263,10 +388,15 @@ export default function ChallengeDetailPage() {
                             );
                         })()}
 
+                        <ChallengeFiles challengeId={challenge.id} canDelete={isOwner} />
+
                         {challenge.solved ? (
                             <>
-                                <div className="bg-success/10 border border-success rounded-md px-3 py-2 text-success font-semibold text-sm">
-                                    ✓ Solved
+                                <div className="bg-success/10 border border-success rounded-md px-3 py-2 text-success font-semibold text-sm inline-flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    Solved
                                 </div>
                                 {challenge.solvedBy && (
                                     <div className="text-xs text-muted">by {challenge.solvedBy}</div>

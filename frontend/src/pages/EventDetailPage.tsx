@@ -243,6 +243,7 @@ function useCountdown(ev: EventDoc | null): string {
 }
 
 function ChallengeCard({ ch }: { ch: ChallengeDoc }) {
+    const fileCount = ch.fileCount ?? 0;
     const color = categoryColor(ch.category || "misc");
     const navigate = useNavigate();
 
@@ -274,6 +275,14 @@ function ChallengeCard({ ch }: { ch: ChallengeDoc }) {
             <div className="flex gap-2 flex-wrap mt-auto items-center">
                 {ch.ctfdId && Date.now() - ch.createdAt < 30 * 60 * 1000 && (
                     <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-accent/20 text-accent">New</span>
+                )}
+                {fileCount > 0 && (
+                    <span className="text-[11px] text-muted inline-flex items-center gap-1" title={`${fileCount} file${fileCount === 1 ? "" : "s"}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 17.93 8.8l-8.58 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                        {fileCount}
+                    </span>
                 )}
                 {ch.url && (
                     <a
@@ -541,6 +550,7 @@ export default function EventDetailPage() {
                 solvers: [],
                 description: "",
                 ctfdId: null,
+                fileCount: 0,
             });
         } catch (e) {
             console.error("createChallenge failed:", e);

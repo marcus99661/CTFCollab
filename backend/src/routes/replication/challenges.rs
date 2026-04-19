@@ -24,7 +24,7 @@ async fn pull(
     let docs: Vec<ChallengeDoc> = match req.checkpoint.clone() {
         None => {
             sqlx::query_as::<_, ChallengeDoc>(
-                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers, c.description, c.ctfd_id
+                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers, c.description, c.ctfd_id, c.file_count
                  FROM challenges c
                  JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $2
                  ORDER BY GREATEST(c.updated_at, em.joined_at) ASC, c.id ASC
@@ -38,7 +38,7 @@ async fn pull(
         }
         Some(cp) => {
             sqlx::query_as::<_, ChallengeDoc>(
-                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers, c.description, c.ctfd_id
+                "SELECT c.id, c.event_id, c.title, c.category, c.points, c.url, c.created_at, c.updated_at, c.is_deleted, c.note_id, c.solved, c.flag, c.solved_by, c.solvers, c.description, c.ctfd_id, c.file_count
                  FROM challenges c
                  JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $3
                  WHERE GREATEST(c.updated_at, em.joined_at) > $1
@@ -106,20 +106,23 @@ async fn push(
         .await
         ?;
 
+        // Load existing row so we can preserve server-owned fields (file_count always, metadata if the pusher is only a member).
+        let existing = sqlx::query_as::<_, ChallengeDoc>(
+            "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count
+             FROM challenges WHERE id = $1"
+        )
+        .bind(&incoming.id)
+        .fetch_optional(&state.db)
+        .await
+        ?;
+
         match role {
             None => continue,
-            Some(EventRole::Owner) => {}
+            Some(EventRole::Owner) => {
+                incoming.file_count = existing.as_ref().map(|s| s.file_count).unwrap_or(0);
+            }
             Some(EventRole::Member) => {
                 // Members can only update collaborative fields, restore metadata from the server
-                let existing = sqlx::query_as::<_, ChallengeDoc>(
-                    "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id
-                     FROM challenges WHERE id = $1"
-                )
-                .bind(&incoming.id)
-                .fetch_optional(&state.db)
-                .await
-                ?;
-
                 match existing {
                     None => continue,
                     Some(server) => {
@@ -130,14 +133,15 @@ async fn push(
                         incoming.is_deleted = server.is_deleted;
                         incoming.description = server.description;
                         incoming.ctfd_id = server.ctfd_id;
+                        incoming.file_count = server.file_count;
                     }
                 }
             }
         }
 
         let applied: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(
-            "INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            "INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
              ON CONFLICT (id) DO UPDATE
              SET event_id = EXCLUDED.event_id,
                  title = EXCLUDED.title,
@@ -153,9 +157,10 @@ async fn push(
                  solved_by = EXCLUDED.solved_by,
                  solvers = EXCLUDED.solvers,
                  description = EXCLUDED.description,
-                 ctfd_id = EXCLUDED.ctfd_id
+                 ctfd_id = EXCLUDED.ctfd_id,
+                 file_count = EXCLUDED.file_count
              WHERE EXCLUDED.updated_at >= challenges.updated_at
-             RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id"
+             RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count"
         )
         .bind(&incoming.id)
         .bind(&incoming.event_id)
@@ -173,13 +178,14 @@ async fn push(
         .bind(&incoming.solvers)
         .bind(&incoming.description)
         .bind(incoming.ctfd_id)
+        .bind(incoming.file_count)
         .fetch_optional(&state.db)
         .await
         ?;
 
         if applied.is_none() {
             let server_doc: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(
-                "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id
+                "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count
                  FROM challenges WHERE id = $1"
             )
             .bind(&incoming.id)

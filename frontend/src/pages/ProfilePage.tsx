@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { authFetch, clearToken, clearCollabUser } from "../auth";
 import { clearLocalData } from "../db";
 import "../styles/ui.css";
 
 export default function ProfilePage() {
-    const navigate = useNavigate();
     const [username, setUsername] = useState("");
 
     const [currentPassword, setCurrentPassword] = useState("");
@@ -69,7 +67,7 @@ export default function ProfilePage() {
             await clearLocalData();
             clearToken();
             clearCollabUser();
-            navigate("/login");
+            window.location.assign("/login");
         } catch {
             setDeleteError("Could not reach server");
         } finally {

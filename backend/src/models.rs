@@ -75,6 +75,8 @@ pub struct ChallengeDoc {
     #[serde(default)]
     pub description: String,
     pub ctfd_id: Option<i32>,
+    #[serde(default)]
+    pub file_count: i32,
 }
 
 /*

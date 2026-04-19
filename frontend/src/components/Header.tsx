@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { clearToken, getCollabUser, clearCollabUser, isEventBased } from "../auth";
 import "../styles/ui.css";
 import { useServerStatus, type ServerStatus } from "../hooks/useServerStatus";
@@ -17,7 +17,6 @@ const statusConfig: Record<ServerStatus, { color: string; label: string; title: 
 
 export default function Header() {
     const { pathname } = useLocation();
-    const navigate = useNavigate();
     const serverStatus = useServerStatus();
     const sc = statusConfig[serverStatus];
 
@@ -26,11 +25,16 @@ export default function Header() {
     const navLinks = allNavLinks.filter(l => !(eventBased && l.eventBasedHidden));
 
     async function logout() {
-        const { clearLocalData } = await import("../db");
-        await clearLocalData();
+        try {
+            const { clearLocalData } = await import("../db");
+            await clearLocalData();
+        } catch (e) {
+            console.error("clearLocalData failed during logout:", e);
+        }
         clearToken();
         clearCollabUser();
-        navigate("/login");
+        // Hard reload so no in-memory RxDB handles survive into the next session.
+        window.location.assign("/login");
     }
 
     return (

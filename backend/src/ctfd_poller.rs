@@ -3,6 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::routes::ctfd::{ctfd_fetch, ctfd_fetch_challenge};
+use crate::routes::challenge_files::sync_ctfd_files;
 use crate::utils::now_ms;
 
 pub fn start_poller(db: PgPool) {
@@ -17,8 +18,8 @@ pub fn start_poller(db: PgPool) {
 async fn poll(db: &PgPool) {
     let now = now_ms();
 
-    let configs = match sqlx::query_as::<_, (String, String, Option<String>, String)>(
-        "SELECT c.event_id, c.ctfd_url, c.ctfd_credential, c.ctfd_auth_type
+    let configs = match sqlx::query_as::<_, (String, String, String, Option<String>, String)>(
+        "SELECT c.event_id, e.name, c.ctfd_url, c.ctfd_credential, c.ctfd_auth_type
          FROM event_ctfd_config c
          JOIN events e ON e.id = c.event_id
          WHERE e.is_deleted = false
@@ -32,13 +33,15 @@ async fn poll(db: &PgPool) {
         Err(e) => { tracing::error!("CTFd poller DB error: {}", e); return; }
     };
 
-    for (event_id, ctfd_url, credential, auth_type) in configs {
+    for (event_id, event_name, ctfd_url, credential, auth_type) in configs {
         let Some(credential) = credential else { continue };
-        poll_event(db, &event_id, &ctfd_url, &credential, &auth_type).await;
+        poll_event(db, &event_id, &event_name, &ctfd_url, &credential, &auth_type).await;
     }
 }
 
-async fn poll_event(db: &PgPool, event_id: &str, ctfd_url: &str, credential: &str, auth_type: &str) {
+async fn poll_event(db: &PgPool, event_id: &str, event_name: &str, ctfd_url: &str, credential: &str, auth_type: &str) {
+    tracing::info!("Starting to import challenges for {}", event_name);
+
     let text = match ctfd_fetch(&format!("{}/api/v1/challenges", ctfd_url), auth_type, credential).await {
         Ok(t) => t,
         Err(_) => return,
@@ -64,6 +67,8 @@ async fn poll_event(db: &PgPool, event_id: &str, ctfd_url: &str, credential: &st
 
     let existing_set: std::collections::HashSet<i32> = existing_ids.into_iter().collect();
 
+    let mut imported = 0;
+
     for ch in challenges {
         let ctfd_id = match ch["id"].as_i64() {
             Some(id) => id as i32,
@@ -75,9 +80,9 @@ async fn poll_event(db: &PgPool, event_id: &str, ctfd_url: &str, credential: &st
         let points = ch["value"].as_i64().unwrap_or(0) as i32;
         let category = ch["category"].as_str().unwrap_or("").to_string();
 
-        let (description, category) = match ctfd_fetch_challenge(ctfd_url, auth_type, credential, ctfd_id as u64).await {
-            Ok(detail) => (detail.description, detail.category),
-            Err(_) => (String::new(), category),
+        let (description, category, files) = match ctfd_fetch_challenge(ctfd_url, auth_type, credential, ctfd_id as u64).await {
+            Ok(detail) => (detail.description, detail.category, detail.files),
+            Err(_) => (String::new(), category, Vec::new()),
         };
 
         let challenge_id = Uuid::new_v4().to_string();
@@ -113,6 +118,15 @@ async fn poll_event(db: &PgPool, event_id: &str, ctfd_url: &str, credential: &st
         .execute(db)
         .await {
             tracing::error!("CTFd poller challenge insert error: {}", e);
+            continue;
+        }
+
+        imported += 1;
+
+        if !files.is_empty() {
+            sync_ctfd_files(db, &challenge_id, &name, event_id, ctfd_url, auth_type, credential, &files).await;
         }
     }
+
+    tracing::info!("Imported {} new challenges for {}", imported, event_name);
 }

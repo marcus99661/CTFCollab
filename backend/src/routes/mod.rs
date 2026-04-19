@@ -6,4 +6,5 @@ pub mod api;
 pub mod ctf_importer;
 pub mod ctfd;
 pub mod images;
+pub mod challenge_files;
 pub mod invite;
