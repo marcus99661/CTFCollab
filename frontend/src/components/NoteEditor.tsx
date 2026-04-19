@@ -335,8 +335,8 @@ export default function NoteEditor({ noteId, eventId, downloadName }: Props) {
     }
 
     const statusColor =
-        connStatus === "connected"  ? "#4caf50" :
-        connStatus === "connecting" ? "#ff9800" : "#f44336";
+        connStatus === "connected"  ? "var(--color-success)" :
+        connStatus === "connecting" ? "var(--color-warning)" : "var(--color-danger)";
 
     function downloadMarkdown() {
         if (!editor) return;

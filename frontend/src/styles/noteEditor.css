@@ -1,10 +1,10 @@
 .note-editor-wrap {
     display: flex;
     flex-direction: column;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     min-height: 420px;
-    background: #1e1e1e;
+    background: var(--color-surface);
 }
 
 .note-toolbar {
@@ -13,8 +13,8 @@
     align-items: center;
     gap: 2px;
     padding: 5px 6px;
-    border-bottom: 1px solid #444;
-    background: #2a2a2a;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-2);
     border-radius: 4px 4px 0 0;
 }
 
@@ -32,14 +32,14 @@
 }
 
 .tb-btn:hover:not(:disabled) {
-    background: #3a3a3a;
-    border-color: #555;
+    background: var(--color-border);
+    border-color: var(--color-muted);
 }
 
 .tb-btn--active {
-    background: #1e3a5f;
-    border-color: #4a7fc1;
-    color: #7eb8f7;
+    background: color-mix(in oklab, var(--color-accent) 25%, var(--color-surface));
+    border-color: var(--color-accent);
+    color: var(--color-accent);
 }
 
 .tb-btn:disabled {
@@ -50,7 +50,7 @@
 .tb-divider {
     width: 1px;
     height: 18px;
-    background: #444;
+    background: var(--color-border);
     margin: 0 3px;
     flex-shrink: 0;
 }
@@ -58,10 +58,10 @@
 .note-editor-status {
     font-size: 12px;
     padding: 3px 10px;
-    border-bottom: 1px solid #3a3a3a;
+    border-bottom: 1px solid var(--color-border);
     opacity: 0.6;
     text-transform: capitalize;
-    background: #252525;
+    background: var(--color-surface);
 }
 
 .note-editor .ProseMirror {
@@ -140,12 +140,12 @@
     border-radius: 3px;
     padding: 0.1em 0.35em;
     font-size: 0.88em;
-    color: #e06c75;
+    color: var(--color-danger);
 }
 
 .note-editor .ProseMirror pre {
-    background: #141414;
-    border: 1px solid #3a3a3a;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     padding: 0.75em 1em;
     overflow-x: auto;
@@ -159,40 +159,40 @@
 }
 
 .note-editor .ProseMirror blockquote {
-    border-left: 3px solid #555;
+    border-left: 3px solid var(--color-border);
     margin: 0.5em 0;
     padding-left: 1em;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-muted);
 }
 
 .note-editor .ProseMirror hr {
     border: none;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--color-border);
     margin: 1em 0;
 }
 
 .note-editor .ProseMirror a {
-    color: #7eb8f7;
+    color: var(--color-accent);
     text-decoration: underline;
     cursor: pointer;
 }
 
 .note-editor .ProseMirror a:hover {
-    color: #a8cdfb;
+    color: color-mix(in oklab, var(--color-accent) 70%, white);
 }
 
 /* Placeholder when doc is empty */
 .note-editor .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
-    color: #555;
+    color: var(--color-muted);
     pointer-events: none;
     height: 0;
 }
 
 .collaboration-cursor__caret {
-    border-left: 1px solid #fff;
-    border-right: 1px solid #fff;
+    border-left: 1px solid var(--color-text);
+    border-right: 1px solid var(--color-text);
     margin-left: -1px;
     margin-right: -1px;
     pointer-events: none;

@@ -10,10 +10,10 @@ import "../styles/ui.css";
 type EventGroup = "active" | "upcoming" | "ended" | "nodate";
 
 const EVENT_STATUS: Record<EventGroup, { label: string; color: string }> = {
-    active: { label: "Live", color: "#3fb950" },
-    upcoming: { label: "Upcoming", color: "#d29922" },
-    ended: { label: "Finished", color: "#8b949e" },
-    nodate: { label: "Open", color: "#4cb4c7" },
+    active: { label: "Live", color: "var(--color-success)" },
+    upcoming: { label: "Upcoming", color: "var(--color-warning)" },
+    ended: { label: "Finished", color: "var(--color-muted)" },
+    nodate: { label: "Open", color: "var(--color-accent)" },
 };
 
 function classifyEvent(ev: EventDoc, now: number): EventGroup {
@@ -88,8 +88,8 @@ export default function DashboardPage() {
             <h2 className="text-text font-semibold text-xl m-0 mb-5">Dashboard</h2>
 
             <div className="flex gap-3 flex-wrap mb-7">
-                <StatCard label="Events" value={events.length} bg="#4cb4c7" />
-                <StatCard label="Currently Active" value={active.length} bg="#e66e12" />
+                <StatCard label="Events" value={events.length} bg="var(--color-accent)" />
+                <StatCard label="Currently Active" value={active.length} bg="var(--color-warning)" />
                 <StatCard label="Upcoming" value={upcoming.length} bg="#7abecc" />
                 <StatCard label="Challenges" value={challenges.length} bg="#018789" />
             </div>

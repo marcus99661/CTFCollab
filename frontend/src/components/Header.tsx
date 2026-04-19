@@ -10,9 +10,9 @@ const allNavLinks = [
 ];
 
 const statusConfig: Record<ServerStatus, { color: string; label: string; title: string }> = {
-    online: { color: "text-green-500", label: "Connected", title: "Server reachable" },
-    unstable: { color: "text-amber-500", label: "Unstable", title: "Server not responding - changes saved locally" },
-    offline: { color: "text-red-500", label: "Disconnected", title: "No network" },
+    online: { color: "text-success", label: "Connected", title: "Server reachable" },
+    unstable: { color: "text-warning", label: "Unstable", title: "Server not responding - changes saved locally" },
+    offline: { color: "text-danger", label: "Disconnected", title: "No network" },
 };
 
 export default function Header() {
