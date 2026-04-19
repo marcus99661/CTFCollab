@@ -5,6 +5,7 @@ import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import Link from "@tiptap/extension-link";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { IndexeddbPersistence } from "y-indexeddb";
@@ -49,6 +50,25 @@ function TBtn({ onClick, active, disabled, title, children }: TBtnProps) {
 
 function Divider() {
     return <span className="tb-divider" />;
+}
+
+function promptLink(editor: Editor) {
+    const previous = editor.getAttributes("link").href ?? "";
+    const url = window.prompt("URL", previous);
+
+    if (url === null) return;
+
+    if (url === "") {
+        editor.chain().focus().extendMarkRange("link").unsetLink().run();
+        return;
+    }
+
+    if (!/^https?:\/\//i.test(url)) {
+        window.alert("Only http:// and https:// URLs are allowed.");
+        return;
+    }
+
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
 }
 
 function Toolbar({ editor, onDownload, onInsertImage }: { editor: Editor; onDownload: () => void; onInsertImage: () => void }) {
@@ -151,6 +171,17 @@ function Toolbar({ editor, onDownload, onInsertImage }: { editor: Editor; onDown
                 </svg>
             </TBtn>
 
+            <TBtn
+                onClick={() => promptLink(editor)}
+                active={editor.isActive("link")}
+                title="Add or edit link"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 1 0-7.07-7.07l-1.5 1.5" />
+                    <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 1 0 7.07 7.07l1.5-1.5" />
+                </svg>
+            </TBtn>
+
             <div className="ml-auto">
                 <TBtn onClick={onDownload} title="Download as Markdown">Download note</TBtn>
             </div>
@@ -199,6 +230,17 @@ export default function NoteEditor({ noteId, eventId, downloadName }: Props) {
             CollaborationCursor.configure({
                 provider: wsProvider,
                 user: getUserInfo(),
+            }),
+            Link.configure({
+                openOnClick: true,
+                autolink: true,
+                linkOnPaste: true,
+                protocols: ["http", "https"],
+                HTMLAttributes: {
+                    rel: "noopener noreferrer nofollow",
+                    target: "_blank",
+                },
+                validate: (href: string) => /^https?:\/\//i.test(href),
             }),
             CtfImage,
         ],

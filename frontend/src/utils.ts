@@ -7,11 +7,20 @@ export function nodeToMarkdown(node: any, listDepth = 0): string {
 
     if (node.type === "text") {
         let text = node.text ?? "";
-        const marks: string[] = (node.marks ?? []).map((m: any) => m.type);
-        if (marks.includes("code")) return "`" + text + "`";
-        if (marks.includes("bold")) text = "**" + text + "**";
-        if (marks.includes("italic")) text = "*" + text + "*";
-        if (marks.includes("strike")) text = "~~" + text + "~~";
+        const marks: any[] = node.marks ?? [];
+        const types = marks.map((m: any) => m.type);
+
+        if (types.includes("code")) {
+            text = "`" + text + "`";
+        } else {
+            if (types.includes("bold")) text = "**" + text + "**";
+            if (types.includes("italic")) text = "*" + text + "*";
+            if (types.includes("strike")) text = "~~" + text + "~~";
+        }
+
+        const link = marks.find((m: any) => m.type === "link");
+        if (link) text = "[" + text + "](" + (link.attrs?.href ?? "") + ")";
+
         return text;
     }
 

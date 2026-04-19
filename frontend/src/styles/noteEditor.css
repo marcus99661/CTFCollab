@@ -130,6 +130,16 @@
     margin: 1em 0;
 }
 
+.note-editor .ProseMirror a {
+    color: #7eb8f7;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.note-editor .ProseMirror a:hover {
+    color: #a8cdfb;
+}
+
 /* Placeholder when doc is empty */
 .note-editor .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
