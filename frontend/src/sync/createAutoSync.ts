@@ -89,31 +89,39 @@ export function createAutoSync(config: SyncConfig) {
         }
 
         async function pull() {
-            const res = await fetch(`${baseUrl}${config.pullPath}`, {
-                method: "POST",
-                headers: { "content-type": "application/json", "Authorization": `Bearer ${getToken()}` },
-                body: JSON.stringify({ checkpoint: cp, limit: 200 })
-            });
+            const limit = 200;
 
-            if (!res.ok) throw new Error(`Pull failed: ${res.status} ${res.statusText}`);
+            // Drain the server in a single sync cycle so a fresh client or a
+            // newly joined event doesn't trickle in one batch per poll tick.
+            while (true) {
+                const res = await fetch(`${baseUrl}${config.pullPath}`, {
+                    method: "POST",
+                    headers: { "content-type": "application/json", "Authorization": `Bearer ${getToken()}` },
+                    body: JSON.stringify({ checkpoint: cp, limit })
+                });
 
-            const json = await res.json();
-            const docs = json.documents ?? [];
-            const nextCp = json.checkpoint ?? cp;
+                if (!res.ok) throw new Error(`Pull failed: ${res.status} ${res.statusText}`);
 
-            if (docs.length > 0) {
-                applyingRemote = true;
-                try {
-                    for (const d of docs) {
-                        await collection.upsert(d);
+                const json = await res.json();
+                const docs = json.documents ?? [];
+                const nextCp = json.checkpoint ?? cp;
+
+                if (docs.length > 0) {
+                    applyingRemote = true;
+                    try {
+                        for (const d of docs) {
+                            await collection.upsert(d);
+                        }
+                    } finally {
+                        applyingRemote = false;
                     }
-                } finally {
-                    applyingRemote = false;
                 }
-            }
 
-            cp = nextCp;
-            saveCp(cp);
+                cp = nextCp;
+                saveCp(cp);
+
+                if (docs.length < limit) break;
+            }
         }
 
         async function sync(reason: string) {
