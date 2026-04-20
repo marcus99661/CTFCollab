@@ -56,12 +56,24 @@ export function clearToken(): void {
     localStorage.removeItem(TOKEN_KEY);
 }
 
-export function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-    return fetch(url, {
+export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const res = await fetch(url, {
         ...options,
         headers: {
             ...options.headers,
             Authorization: `Bearer ${getToken()}`,
         },
     });
+
+    // Wipe local auth and bounce to login so the user doesnt have a dead session
+    if (res.status === 401) {
+        clearToken();
+        clearCollabUser();
+
+        if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+        }
+    }
+
+    return res;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getToken } from "../auth";
+import { authFetch } from "../auth";
 import "../styles/ui.css";
 
 type User = {
@@ -13,9 +13,7 @@ export default function AdminPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch("/api/admin/users", {
-            headers: { Authorization: `Bearer ${getToken()}` },
-        })
+        authFetch("/api/admin/users")
             .then((r) => r.json())
             .then(setUsers)
             .catch(() => setError("Failed to load users"));
@@ -24,9 +22,8 @@ export default function AdminPage() {
     async function deleteUser(id: string, name: string) {
         if (!confirm(`Delete user "${name}"?`)) return;
 
-        const res = await fetch(`/api/admin/users/${id}`, {
+        const res = await authFetch(`/api/admin/users/${id}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${getToken()}` },
         });
 
         if (res.ok) {

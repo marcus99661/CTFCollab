@@ -25,11 +25,11 @@ async fn main() {
         .init();
 
     let cfg = AppConfig::from_env();
+    let addr: SocketAddr = cfg.addr;
     let state = AppState::new(&cfg).await.unwrap();
     routes::yjs::start_compaction(state.db.clone());
     ctfd_poller::start_poller(state.db.clone());
     let app = build_app(state);
-    let addr: SocketAddr = AppConfig::from_env().addr;
     tracing::info!(%addr, "server listening");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

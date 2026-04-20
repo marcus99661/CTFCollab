@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { setToken, getToken, setCollabUser, pickCollabColor } from "../auth";
+import { setToken, getToken, setCollabUser, pickCollabColor, authFetch } from "../auth";
 import "../styles/ui.css";
 
 interface InviteInfo {
@@ -47,9 +47,8 @@ export default function InvitePage() {
         setError(null);
         setLoading(true);
         try {
-            const res = await fetch(`/api/invite/${token}/join`, {
+            const res = await authFetch(`/api/invite/${token}/join`, {
                 method: "POST",
-                headers: { Authorization: `Bearer ${getToken()}` },
             });
             if (!res.ok) {
                 const json = await res.json().catch(() => ({}));

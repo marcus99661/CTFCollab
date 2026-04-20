@@ -1,6 +1,6 @@
 import type { RxDatabase } from "rxdb";
 import type { AppCollections } from "../db";
-import { getToken } from "../auth";
+import { authFetch } from "../auth";
 
 // Checkpoint that tracks what was pulled from server last time.
 // Used for incremental update from backend
@@ -63,9 +63,9 @@ export function createAutoSync(config: SyncConfig) {
 
             if (rows.length === 0) return;
 
-            const res = await fetch(`${baseUrl}${config.pushPath}`, {
+            const res = await authFetch(`${baseUrl}${config.pushPath}`, {
                 method: "POST",
-                headers: { "content-type": "application/json", "Authorization": `Bearer ${getToken()}` },
+                headers: { "content-type": "application/json" },
                 body: JSON.stringify({ rows })
             });
 
@@ -94,9 +94,9 @@ export function createAutoSync(config: SyncConfig) {
             // Drain the server in a single sync cycle so a fresh client or a
             // newly joined event doesn't trickle in one batch per poll tick.
             while (true) {
-                const res = await fetch(`${baseUrl}${config.pullPath}`, {
+                const res = await authFetch(`${baseUrl}${config.pullPath}`, {
                     method: "POST",
-                    headers: { "content-type": "application/json", "Authorization": `Bearer ${getToken()}` },
+                    headers: { "content-type": "application/json" },
                     body: JSON.stringify({ checkpoint: cp, limit })
                 });
 
