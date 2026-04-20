@@ -3,10 +3,7 @@ services:
     image: postgres:18-alpine
     container_name: ctf_db
     restart: always
-    environment:
-      POSTGRES_USER: ctf
-      POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: ctfpad
+    env_file: .env
     volumes:
       - ./db_data:/var/lib/postgresql
       - ./db_init/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
@@ -27,10 +24,10 @@ services:
     image: ctf_backend
     container_name: ctf_backend
     restart: always
+    env_file: .env
     environment:
-      DATABASE_URL: postgres://ctf:mysecretpassword@db:5432/ctfpad
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       RUST_LOG: info,tower_http=info
-      # optional: if your app supports it
       APP_ADDR: 0.0.0.0:3000
     depends_on:
       db:

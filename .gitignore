@@ -1,2 +1,3 @@
 db_init
 db_data
+.env

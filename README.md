@@ -13,13 +13,13 @@ CTFCollab is an offline-first collaboration platform for Capture-the-Flag (CTF) 
 
 ## Running it
 
-Copy `docker-compose.yml` and run:
+Copy `.env.example` to `.env` and set a Postgres password. Then run:
 
 ```shell
 docker compose up -d --build
 ```
 
-The frontend is reachable on `127.0.0.1:80`. First account you register is just a normal account, there's no admin role yet.
+The frontend is reachable on port 80. 
 
 If you only want the database in Docker and want to run the backend/frontend yourself:
 
@@ -29,10 +29,8 @@ cd backend && cargo run
 cd frontend && npm install && npm run dev
 ```
 
-The backend expects `DATABASE_URL` pointing at Postgres. For local dev:
+The backend reads `DATABASE_URL` from the environment. For local dev, point it at the Postgres credentials set in `.env`:
 
 ```
-postgres://ctf:mysecretpassword@localhost:5432/ctfpad
+postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@localhost:5432/<POSTGRES_DB>
 ```
-
-Change the password in `docker-compose.yml` if you're going to expose this anywhere.
