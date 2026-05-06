@@ -419,24 +419,27 @@ export default function EventDetailPage() {
     const countdown = useCountdown(event);
     const { members, role: myRole, refresh: refreshMembers } = useEventRole(id);
 
-    const prefetchStartedFor = useRef<string | null>(null);
-    const prefetchCancelRef = useRef<(() => void) | null>(null);
+    const prefetchedIdsRef = useRef<Set<string>>(new Set());
+    const prefetchCancelsRef = useRef<Array<() => void>>([]);
 
     useEffect(() => {
-        if (!id || prefetchStartedFor.current === id) return;
-        if (challenges.length === 0) return;
-        prefetchStartedFor.current = id;
-        const noteIds = challenges
+        if (!id) return;
+
+        const newIds = challenges
             .map(c => c.noteId)
-            .filter((x): x is string => !!x);
-        prefetchCancelRef.current = startNotePrefetch(noteIds);
+            .filter((x): x is string => !!x && !prefetchedIdsRef.current.has(x));
+
+        if (newIds.length === 0) return;
+
+        for (const noteId of newIds) prefetchedIdsRef.current.add(noteId);
+        prefetchCancelsRef.current.push(startNotePrefetch(newIds));
     }, [id, challenges]);
 
     useEffect(() => {
         return () => {
-            prefetchCancelRef.current?.();
-            prefetchCancelRef.current = null;
-            prefetchStartedFor.current = null;
+            for (const cancel of prefetchCancelsRef.current) cancel();
+            prefetchCancelsRef.current = [];
+            prefetchedIdsRef.current = new Set();
         };
     }, [id]);
 
