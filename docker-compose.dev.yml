@@ -18,10 +18,12 @@ services:
       retries: 15
 
   backend:
-    image: marcus99661/ctfcollab-backend:latest
+    build:
+      context: backend/
+      dockerfile: Dockerfile
+    image: ctf_backend
     container_name: ctf_backend
     restart: always
-    pull_policy: always
     env_file: .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -34,10 +36,12 @@ services:
       - backend_network
 
   frontend:
-    image: marcus99661/ctfcollab-frontend:latest
+    build:
+      context: frontend/
+      dockerfile: Dockerfile
+    image: ctf_frontend
     container_name: ctf_frontend
     restart: always
-    pull_policy: always
     depends_on:
       - backend
     ports:
