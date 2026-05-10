@@ -30,8 +30,6 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: |
-            marcus99661/ctfcollab-backend:latest
-            # marcus99661/ctfcollab-backend:${{ github.sha }}
+          tags: marcus99661/ctfcollab-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
