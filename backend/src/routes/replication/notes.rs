@@ -4,6 +4,7 @@ use crate::error::AppError;
 use crate::models::NoteDoc;
 use crate::routes::auth::AuthUser;
 use crate::state::AppState;
+use crate::utils::now_ms;
 use super::{Checkpoint, PullRequest, PullResponse, PushRequest, PushResponse};
 
 pub fn router() -> Router<AppState> {
@@ -74,7 +75,10 @@ async fn push(
     let mut conflicts = Vec::new();
 
     for row in req.rows {
-        let incoming = row.new_document_state;
+        let mut incoming = row.new_document_state;
+
+        let now = now_ms();
+        incoming.updated_at = incoming.updated_at.min(now);
 
         if incoming.id.is_empty() {
             return Err(AppError::BadRequest("id is required".into()));
