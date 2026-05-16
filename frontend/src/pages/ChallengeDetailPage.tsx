@@ -114,19 +114,23 @@ function ChallengeFiles({ challengeId, canDelete }: { challengeId: string; canDe
         const fd = new FormData();
         fd.append("file", file);
 
-        const res = await authFetch(`/api/challenges/${challengeId}/files`, { method: "POST", body: fd });
+        try {
+            const res = await authFetch(`/api/challenges/${challengeId}/files`, { method: "POST", body: fd });
 
-        if (res.ok) {
-            await refresh();
-        } else {
-            const json = await res.json().catch(() => ({}));
-            setError(json.error ?? "Upload failed");
-        }
+            if (res.ok) {
+                await refresh();
+            } else {
+                const json = await res.json().catch(() => ({}));
+                setError(json.error ?? "Upload failed");
+            }
+        } catch {
+            setError("Upload failed (network error)");
+        } finally {
+            setUploading(false);
 
-        setUploading(false);
-
-        if (inputRef.current) {
-            inputRef.current.value = "";
+            if (inputRef.current) {
+                inputRef.current.value = "";
+            }
         }
     }
 
