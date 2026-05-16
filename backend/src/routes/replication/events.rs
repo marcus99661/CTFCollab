@@ -26,7 +26,7 @@ async fn pull(
                 "SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id, e.flag_format
                  FROM events e
                  JOIN event_members em ON em.event_id = e.id AND em.user_id = $2
-                 ORDER BY e.updated_at ASC, e.id ASC
+                 ORDER BY GREATEST(e.updated_at, em.joined_at) ASC, e.id ASC
                  LIMIT $1"
             )
             .bind(limit)
@@ -40,8 +40,9 @@ async fn pull(
                 "SELECT e.id, e.name, e.description, e.created_by, e.created_at, e.updated_at, e.is_deleted, e.start_at, e.end_at, e.ctftime_id, e.flag_format
                  FROM events e
                  JOIN event_members em ON em.event_id = e.id AND em.user_id = $3
-                 WHERE (e.updated_at > $1) OR (e.updated_at = $1 AND e.id > $2)
-                 ORDER BY e.updated_at ASC, e.id ASC
+                 WHERE GREATEST(e.updated_at, em.joined_at) > $1
+                    OR (GREATEST(e.updated_at, em.joined_at) = $1 AND e.id > $2)
+                 ORDER BY GREATEST(e.updated_at, em.joined_at) ASC, e.id ASC
                  LIMIT $4"
             )
             .bind(cp.updated_at)
@@ -54,14 +55,36 @@ async fn pull(
         }
     };
 
-    let new_checkpoint = docs.last().map(|d| Checkpoint {
-        id: d.id.clone(),
-        updated_at: d.updated_at,
-    });
+    let new_checkpoint = if let Some(last) = docs.last() {
+        let effective_at = sqlx::query_scalar::<_, i64>(
+            "SELECT GREATEST(e.updated_at, em.joined_at)
+             FROM events e
+             JOIN event_members em ON em.event_id = e.id AND em.user_id = $2
+             WHERE e.id = $1"
+        )
+        .bind(&last.id)
+        .bind(&auth.user_id)
+        .fetch_one(&state.db)
+        .await
+        ?;
+
+        Some(Checkpoint { id: last.id.clone(), updated_at: effective_at })
+    } else {
+        None
+    };
+
+    let accessible_ids = sqlx::query_scalar::<_, String>(
+        "SELECT event_id FROM event_members WHERE user_id = $1"
+    )
+    .bind(&auth.user_id)
+    .fetch_all(&state.db)
+    .await
+    ?;
 
     Ok(Json(PullResponse {
         documents: docs,
         checkpoint: new_checkpoint.or(req.checkpoint),
+        accessible_ids,
     }))
 }
 

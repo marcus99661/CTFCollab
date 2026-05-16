@@ -77,9 +77,18 @@ async fn pull(
         None
     };
 
+    let accessible_ids = sqlx::query_scalar::<_, String>(
+        "SELECT event_id FROM event_members WHERE user_id = $1"
+    )
+    .bind(&auth.user_id)
+    .fetch_all(&state.db)
+    .await
+    ?;
+
     Ok(Json(PullResponse {
         documents: docs,
         checkpoint: new_checkpoint.or(req.checkpoint),
+        accessible_ids,
     }))
 }
 

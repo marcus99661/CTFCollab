@@ -5,4 +5,5 @@ export const startEventsAutoSync = createAutoSync({
     pushPath: "/api/replication/events/push",
     pullPath: "/api/replication/events/pull",
     collectionName: "events",
+    cleanupField: "id",
 });

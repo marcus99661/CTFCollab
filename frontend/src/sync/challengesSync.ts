@@ -5,4 +5,5 @@ export const startChallengesAutoSync = createAutoSync({
     pushPath: "/api/replication/challenges/push",
     pullPath: "/api/replication/challenges/pull",
     collectionName: "challenges",
+    cleanupField: "eventId",
 });

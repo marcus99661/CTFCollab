@@ -61,9 +61,21 @@ async fn pull(
         updated_at: d.updated_at,
     });
 
+    let accessible_ids = sqlx::query_scalar::<_, String>(
+        "SELECT DISTINCT c.note_id
+         FROM challenges c
+         JOIN event_members em ON em.event_id = c.event_id AND em.user_id = $1
+         WHERE c.note_id IS NOT NULL"
+    )
+    .bind(&auth.user_id)
+    .fetch_all(&state.db)
+    .await
+    ?;
+
     Ok(Json(PullResponse {
         documents: docs,
         checkpoint: new_checkpoint.or(req.checkpoint),
+        accessible_ids,
     }))
 }
 

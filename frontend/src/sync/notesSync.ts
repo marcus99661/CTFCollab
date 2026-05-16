@@ -5,4 +5,5 @@ export const startNotesAutoSync = createAutoSync({
     pushPath: "/api/replication/notes/push",
     pullPath: "/api/replication/notes/pull",
     collectionName: "notes",
+    cleanupField: "id",
 });

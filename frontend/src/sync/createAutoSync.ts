@@ -11,6 +11,7 @@ interface SyncConfig {
     pushPath: string;
     pullPath: string;
     collectionName: keyof AppCollections;
+    cleanupField: string;
 }
 
 // Sync function for events, challenges, notes
@@ -91,8 +92,8 @@ export function createAutoSync(config: SyncConfig) {
         async function pull() {
             const limit = 200;
 
-            // Drain the server in a single sync cycle so a fresh client or a
-            // newly joined event doesn't trickle in one batch per poll tick.
+            let lastAccessibleIds: string[] | null = null;
+            
             while (true) {
                 const res = await authFetch(`${baseUrl}${config.pullPath}`, {
                     method: "POST",
@@ -105,6 +106,10 @@ export function createAutoSync(config: SyncConfig) {
                 const json = await res.json();
                 const docs = json.documents ?? [];
                 const nextCp = json.checkpoint ?? cp;
+
+                if (Array.isArray(json.accessibleIds)) {
+                    lastAccessibleIds = json.accessibleIds;
+                }
 
                 if (docs.length > 0) {
                     applyingRemote = true;
@@ -121,6 +126,23 @@ export function createAutoSync(config: SyncConfig) {
                 saveCp(cp);
 
                 if (docs.length < limit) break;
+            }
+
+            if (lastAccessibleIds !== null) {
+                const allowed = new Set(lastAccessibleIds);
+                const all = await collection.find().exec();
+                const toRemove = all.filter((d: any) => !allowed.has(d[config.cleanupField]));
+
+                if (toRemove.length > 0) {
+                    applyingRemote = true;
+                    try {
+                        for (const d of toRemove) {
+                            await d.remove();
+                        }
+                    } finally {
+                        applyingRemote = false;
+                    }
+                }
             }
         }
 

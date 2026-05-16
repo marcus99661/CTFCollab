@@ -26,6 +26,7 @@ pub struct PullRequest {
 pub struct PullResponse<T> {
     pub documents: Vec<T>,
     pub checkpoint: Option<Checkpoint>,
+    pub accessible_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
