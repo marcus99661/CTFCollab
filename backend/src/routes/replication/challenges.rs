@@ -131,19 +131,15 @@ async fn push(
                 incoming.file_count = existing.as_ref().map(|s| s.file_count).unwrap_or(0);
             }
             Some(EventRole::Member) => {
-                // Members can only update collaborative fields, restore metadata from the server
-                match existing {
-                    None => continue,
-                    Some(server) => {
-                        incoming.title = server.title;
-                        incoming.category = server.category;
-                        incoming.points = server.points;
-                        incoming.url = server.url;
-                        incoming.is_deleted = server.is_deleted;
-                        incoming.description = server.description;
-                        incoming.ctfd_id = server.ctfd_id;
-                        incoming.file_count = server.file_count;
-                    }
+                if let Some(server) = existing {
+                    incoming.title = server.title;
+                    incoming.category = server.category;
+                    incoming.points = server.points;
+                    incoming.url = server.url;
+                    incoming.is_deleted = server.is_deleted;
+                    incoming.description = server.description;
+                    incoming.ctfd_id = server.ctfd_id;
+                    incoming.file_count = server.file_count;
                 }
             }
         }
