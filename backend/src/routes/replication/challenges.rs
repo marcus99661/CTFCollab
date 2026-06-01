@@ -105,7 +105,6 @@ async fn push(
         let now = now_ms();
         incoming.updated_at = incoming.updated_at.min(now);
 
-        // Check the user is a member of the event this challenge belongs to
         let role = sqlx::query_scalar::<_, EventRole>(
             "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
         )
@@ -115,7 +114,11 @@ async fn push(
         .await
         ?;
 
-        // Load existing row so we can preserve server-owned fields (file_count always, metadata if the pusher is only a member).
+        let role = match role {
+            Some(r) => r,
+            None => continue,
+        };
+
         let existing = sqlx::query_as::<_, ChallengeDoc>(
             "SELECT id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count
              FROM challenges WHERE id = $1"
@@ -125,35 +128,40 @@ async fn push(
         .await
         ?;
 
-        match role {
-            None => continue,
-            Some(EventRole::Owner) => {
-                incoming.file_count = existing.as_ref().map(|s| s.file_count).unwrap_or(0);
+        if let Some(server) = existing {
+            if server.event_id != incoming.event_id {
+                continue;
             }
-            Some(EventRole::Member) => {
-                if let Some(server) = existing {
+
+            match role {
+                EventRole::Owner => {}
+                EventRole::Member => {
+                    // owner-only on update
                     incoming.title = server.title;
                     incoming.category = server.category;
                     incoming.points = server.points;
                     incoming.url = server.url;
-                    incoming.is_deleted = server.is_deleted;
                     incoming.description = server.description;
-                    incoming.ctfd_id = server.ctfd_id;
-                    incoming.file_count = server.file_count;
+                    incoming.is_deleted = server.is_deleted;
+                    incoming.note_id = server.note_id;
                 }
             }
+        } else {
+            // create defaults
+            incoming.created_at = now;
+            incoming.file_count = 0;
+            incoming.ctfd_id = None;
+            incoming.is_deleted = false;
         }
 
         let applied: Option<ChallengeDoc> = sqlx::query_as::<_, ChallengeDoc>(
             "INSERT INTO challenges (id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
              ON CONFLICT (id) DO UPDATE
-             SET event_id = EXCLUDED.event_id,
-                 title = EXCLUDED.title,
+             SET title = EXCLUDED.title,
                  category = EXCLUDED.category,
                  points = EXCLUDED.points,
                  url = EXCLUDED.url,
-                 created_at = EXCLUDED.created_at,
                  updated_at = EXCLUDED.updated_at,
                  is_deleted = EXCLUDED.is_deleted,
                  note_id = EXCLUDED.note_id,
@@ -161,9 +169,7 @@ async fn push(
                  flag = EXCLUDED.flag,
                  solved_by = EXCLUDED.solved_by,
                  solvers = EXCLUDED.solvers,
-                 description = EXCLUDED.description,
-                 ctfd_id = EXCLUDED.ctfd_id,
-                 file_count = EXCLUDED.file_count
+                 description = EXCLUDED.description
              WHERE EXCLUDED.updated_at >= challenges.updated_at
              RETURNING id, event_id, title, category, points, url, created_at, updated_at, is_deleted, note_id, solved, flag, solved_by, solvers, description, ctfd_id, file_count"
         )

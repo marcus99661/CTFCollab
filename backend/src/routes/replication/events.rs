@@ -124,9 +124,14 @@ async fn push(
             ?;
 
             match member {
-                None | Some(EventRole::Member) => continue,
+                None => continue,
+                Some(EventRole::Member) => continue,
                 Some(EventRole::Owner) => {}
             }
+        } else {
+            // create defaults
+            incoming.created_at = now;
+            incoming.is_deleted = false;
         }
 
         let applied: Option<EventDoc> = sqlx::query_as::<_, EventDoc>(
