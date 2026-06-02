@@ -20,6 +20,7 @@ bcrypt = "0.19.1"
 uuid = { version = "1.23.1", features = ["v4"] }
 chrono = "0.4.44"
 reqwest = { version = "0.13.3", features = ["json"] }
+tower_governor = "0.8.0"
 
 [profile.release]
 #opt-level = 3

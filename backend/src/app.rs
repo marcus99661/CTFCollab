@@ -4,6 +4,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use std::{fmt, time::Duration};
+use tower_governor::{governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{Level, Span};
@@ -26,19 +27,40 @@ pub fn build_app(state: AppState) -> Router {
             );
         });
 
-    // All routes -> to handlers
-    let api = Router::new()
+    // Rate-limiting. 5 per second, burst of 30
+    let governor = GovernorConfigBuilder::default()
+        .per_millisecond(200)
+        .burst_size(30)
+        .key_extractor(SmartIpKeyExtractor)
+        .finish()
+        .unwrap();
+
+    // Drop stale entries
+    let limiter = governor.limiter().clone();
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_secs(60));
+            limiter.retain_recent();
+        }
+    });
+
+    // REST shares one limit. The Yjs websocket is left out.
+    let rest = Router::new()
         .route("/health", get(health))
         .nest("/auth", auth::router())
         .merge(replication::router())
-        .merge(yjs::router())
         //.merge(admin::router())
         .merge(api::router())
         .merge(ctf_importer::router())
         .merge(ctfd::router())
         .merge(images::router())
         .merge(challenge_files::router())
-        .merge(invite::router());
+        .merge(invite::router())
+        .layer(GovernorLayer::new(governor));
+
+    let api = Router::new()
+        .merge(rest)
+        .merge(yjs::router());
 
     Router::new()
         .nest("/api", api)
