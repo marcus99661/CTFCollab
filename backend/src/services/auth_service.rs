@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bcrypt;
 use sqlx::PgPool;
 use uuid::Uuid;
+use crate::utils::now_ms;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginRequest {
@@ -106,7 +107,7 @@ impl AuthService {
         let id = Uuid::new_v4().to_string();
 
         let hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST).unwrap().to_string();
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
+        let now = now_ms();
 
         sqlx::query("INSERT INTO users (id, name, email, password_hash, created_at, is_event_based) VALUES ($1, $2, $3, $4, $5, FALSE)")
             .bind(&id)

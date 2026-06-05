@@ -37,9 +37,9 @@ pub fn build_app(state: AppState) -> Router {
 
     // Drop stale entries
     let limiter = governor.limiter().clone();
-    std::thread::spawn(move || {
+    tokio::spawn(async move {
         loop {
-            std::thread::sleep(Duration::from_secs(60));
+            tokio::time::sleep(Duration::from_secs(60)).await;
             limiter.retain_recent();
         }
     });
