@@ -49,7 +49,6 @@ pub fn build_app(state: AppState) -> Router {
         .route("/health", get(health))
         .nest("/auth", auth::router())
         .merge(replication::router())
-        //.merge(admin::router())
         .merge(api::router())
         .merge(ctf_importer::router())
         .merge(ctfd::router())
