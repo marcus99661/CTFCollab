@@ -1,6 +1,7 @@
 use axum::{routing::post, Json, Router, extract::{State, FromRequestParts}, http::request::Parts};
 use jsonwebtoken::{decode, Validation, Algorithm};
 use crate::error::AppError;
+use crate::runtime_config::RuntimeConfig;
 use crate::services::auth_service::{AuthService, LoginRequest, RegisterRequest, AuthResponse, Claims};
 use crate::state::AppState;
 
@@ -47,6 +48,10 @@ async fn login(State(state): State<AppState>, Json(payload): Json<LoginRequest>)
 }
 
 async fn register(State(state): State<AppState>, Json(payload): Json<RegisterRequest>) -> Result<Json<AuthResponse>, AppError> {
+    if !RuntimeConfig::load().registration_enabled {
+        return Err(AppError::BadRequest("Registration is currently disabled, contact administrator if needed".to_string()));
+    }
+
     AuthService::register(&state.db, &state.enc_key, payload)
         .await
         .map(Json)

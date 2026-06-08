@@ -4,6 +4,7 @@ mod ctfd_poller;
 mod error;
 mod models;
 mod routes;
+mod runtime_config;
 mod services;
 mod state;
 mod utils;
