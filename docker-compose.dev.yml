@@ -11,6 +11,19 @@ services:
       - backend_network
     ports:
       - "127.0.0.1:5432:5432"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    mem_limit: 1g
+    pids_limit: 300
+    cpus: "1.5"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ctf -d ctfpad"]
       interval: 5s
@@ -31,6 +44,16 @@ services:
       APP_ADDR: 0.0.0.0:3000
     volumes:
       - ./backend/config.yml:/app/config.yml:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 512m
+    pids_limit: 200
+    cpus: "1.0"
     depends_on:
       db:
         condition: service_healthy
@@ -47,7 +70,14 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "80:8080"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128m
+    pids_limit: 100
+    cpus: "0.5"
     networks:
       - backend_network
 

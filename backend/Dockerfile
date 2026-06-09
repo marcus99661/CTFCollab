@@ -18,8 +18,10 @@ RUN cargo build --release
 FROM debian:trixie-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -r -u 10001 appuser
 COPY --from=builder /app/target/release/ctfcollab /app/ctfcollab
+USER appuser
 ENV BIND_ADDR=0.0.0.0:3000
 EXPOSE 3000
 CMD ["/app/ctfcollab"]
