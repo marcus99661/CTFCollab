@@ -8,7 +8,7 @@ const activeNotes = new Set<string>();
 export function markNoteActive(id: string) { activeNotes.add(id); }
 export function unmarkNoteActive(id: string) { activeNotes.delete(id); }
 
-function getWsBaseUrl(): string {
+export function getWsBaseUrl(): string {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${window.location.host}/api/yjs`;
 }

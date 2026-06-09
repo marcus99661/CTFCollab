@@ -56,20 +56,21 @@ function Divider() {
 
 function promptLink(editor: Editor) {
     const previous = editor.getAttributes("link").href ?? "";
-    const input = window.prompt("URL", previous);
+    const url = window.prompt("URL", previous);
 
-    if (input === null) return;
-
-    const url = input.trim();
+    if (url === null) return;
 
     if (url === "") {
         editor.chain().focus().extendMarkRange("link").unsetLink().run();
         return;
     }
 
-    const href = /^https?:\/\//i.test(url) ? url : "https://" + url;
+    if (!/^https?:\/\//i.test(url)) {
+        window.alert("Only http:// and https:// URLs are allowed.");
+        return;
+    }
 
-    editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
 }
 
 function Toolbar({ editor, onDownload, onInsertImage }: { editor: Editor; onDownload: () => void; onInsertImage: () => void }) {
@@ -335,7 +336,7 @@ export default function NoteEditor({ noteId, eventId, downloadName }: Props) {
 
     const statusColor =
         connStatus === "connected"  ? "var(--color-success)" :
-        connStatus === "connecting" ? "var(--color-warning)" : "var(--color-danger)";
+            connStatus === "connecting" ? "var(--color-warning)" : "var(--color-danger)";
 
     function downloadMarkdown() {
         if (!editor) return;

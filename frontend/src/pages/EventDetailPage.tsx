@@ -5,8 +5,9 @@ import { startEventsAutoSync } from "../sync/eventsSync";
 import { startChallengesAutoSync } from "../sync/challengesSync";
 import { startNotesAutoSync } from "../sync/notesSync";
 import { startNotePrefetch } from "../notePrefetch";
-import { makeId, nodeToMarkdown, slugify, downloadBlob, tsToDatetimeLocal } from "../utils";
+import { makeId, nodeToMarkdown, slugify, downloadBlob, tsToDatetimeLocal, formatDate, hashColor } from "../utils";
 import { authFetch, getUserIdFromToken } from "../auth";
+import { sendOrQueue } from "../offlineQueue";
 import { useEventRole } from "../hooks/useEventRole";
 import "../styles/ui.css";
 
@@ -161,7 +162,7 @@ function InviteOverlay({ eventId, onClose }: { eventId: string; onClose: () => v
                                         {joins.map((j, i) => (
                                             <div key={i} className="flex justify-between text-[13px]">
                                                 <span>{j.username}</span>
-                                                <span className="text-muted">{new Date(j.joined_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", hour12: false })}</span>
+                                                <span className="text-muted">{formatDate(j.joined_at)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -193,11 +194,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 function categoryColor(cat: string): string {
     const key = cat.toLowerCase();
     if (CATEGORY_COLORS[key]) return CATEGORY_COLORS[key];
-    let h = 0;
-    for (let i = 0; i < key.length; i++) {
-        h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
-    }
-    return `hsl(${Math.abs(h) % 360}, 60%, 55%)`;
+    return `hsl(${hashColor(key)}, 60%, 55%)`;
 }
 
 function useCountdown(ev: EventDoc | null): string {
@@ -585,25 +582,47 @@ export default function EventDetailPage() {
     async function inviteMember() {
         if (!id || !inviteUsername.trim()) return;
         setInviteError(null);
-        try {
-            const res = await authFetch(`/api/events/${id}/members`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: inviteUsername.trim() }),
-            });
-            const json = await res.json();
-            if (!res.ok) { setInviteError(json.error ?? "Failed to invite"); return; }
+
+        const res = await sendOrQueue(
+            `invite:${id}:${inviteUsername.trim()}`,
+            `/api/events/${id}/members`,
+            { method: "POST", body: JSON.stringify({ username: inviteUsername.trim() }) },
+        );
+
+        if (!res) {
+            setInviteError("Offline - the invite will be sent when you reconnect.");
             setInviteUsername("");
-            refreshMembers();
-        } catch { setInviteError("Could not reach server"); }
+            return;
+        }
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) { setInviteError(json.error ?? "Failed to invite"); return; }
+        setInviteUsername("");
+        refreshMembers();
     }
 
     async function kickMember(userId: string) {
         if (!id) return;
-        try {
-            await authFetch(`/api/events/${id}/members/${userId}`, { method: "DELETE" });
-            refreshMembers();
-        } catch {}
+        await sendOrQueue(`kick:${id}:${userId}`, `/api/events/${id}/members/${userId}`, { method: "DELETE" });
+        refreshMembers();
+    }
+
+    async function leaveEvent() {
+        if (!id) return;
+        if (!window.confirm("Leave this event? You'll lose access until you're invited again.")) return;
+
+        const res = await sendOrQueue(`leave:${id}`, `/api/events/${id}/leave`, { method: "POST" });
+
+        if (res && !res.ok) {
+            const json = await res.json().catch(() => ({}));
+            window.alert(json.error ?? "Could not leave the event");
+            return;
+        }
+
+        const db = await getDb();
+        const doc = await db.events.findOne(id).exec();
+        await doc?.remove();
+        navigate("/events");
     }
 
     const byCategory: Record<string, ChallengeDoc[]> = {};
@@ -692,6 +711,12 @@ export default function EventDetailPage() {
                                 </div>
                             )}
                             {inviteError && <p className="text-danger m-0 text-[13px]">{inviteError}</p>}
+
+                            {effectiveRole === "member" && (
+                                <div className="mt-1 border-t border-border pt-2.5">
+                                    <button className="btn btn-danger" onClick={leaveEvent}>Leave event</button>
+                                </div>
+                            )}
                         </div>
                     </div>
 

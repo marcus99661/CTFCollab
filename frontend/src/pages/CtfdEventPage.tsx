@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { authFetch } from "../auth";
+import { sendOrQueue } from "../offlineQueue";
 import { getDb } from "../db";
 import { useEventRole } from "../hooks/useEventRole";
 import "../styles/ui.css";
@@ -121,15 +122,18 @@ export default function CtfdEventPage() {
         setConfigSaving(true);
         setConfigError(null);
         try {
-            const res = await authFetch(`/api/events/${id}/ctfd/config`, {
+            const res = await sendOrQueue(`ctfd-config:${id}`, `/api/events/${id}/ctfd/config`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ctfd_url: urlInput.trim(),
                     credential: credentialInput.trim() || null,
                     auth_type: authType,
                 }),
             });
+            if (!res) {
+                setConfigError("The configuration will be saved when you reconnect.");
+                return;
+            }
             const json = await res.json();
             if (!res.ok) { setConfigError(json.error ?? "Failed to save"); return; }
             setConfig(json);
@@ -137,8 +141,6 @@ export default function CtfdEventPage() {
             setUrlInput("");
             setCredentialInput("");
             if (json.test_ok) fetchData(tab);
-        } catch {
-            setConfigError("Could not reach server");
         } finally {
             setConfigSaving(false);
         }
@@ -146,7 +148,7 @@ export default function CtfdEventPage() {
 
     async function deleteConfig() {
         if (!confirm("Remove CTFd configuration?")) return;
-        await authFetch(`/api/events/${id}/ctfd/config`, { method: "DELETE" });
+        await sendOrQueue(`ctfd-config:${id}`, `/api/events/${id}/ctfd/config`, { method: "DELETE" });
         setConfig(null);
         setScoreboard([]);
         setChallenges([]);
@@ -157,7 +159,11 @@ export default function CtfdEventPage() {
         setImportResult(null);
         setError(null);
         try {
-            const res = await authFetch(`/api/events/${id}/ctfd/import`, { method: "POST" });
+            const res = await sendOrQueue(`ctfd-import:${id}`, `/api/events/${id}/ctfd/import`, { method: "POST" });
+            if (!res) {
+                setError("The import will run when you reconnect.");
+                return;
+            }
             const json = await res.json();
             if (!res.ok) throw new Error(json.error ?? "Failed to import challenges");
             setImportResult({ added: json.added, updated: json.updated, skipped: json.skipped });

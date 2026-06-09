@@ -4,6 +4,7 @@ import { getDb, type EventDoc } from "../db";
 import { startEventsAutoSync } from "../sync/eventsSync";
 import { makeId, formatDate } from "../utils";
 import { getUserIdFromToken, isEventBased } from "../auth";
+import { sendOrQueue } from "../offlineQueue";
 import "../styles/ui.css";
 
 function AddEventOverlay({ onClose, onAdd }: {
@@ -135,6 +136,22 @@ export default function EventsPage() {
         }
     }
 
+    async function leaveEvent(id: string) {
+        if (!window.confirm("Leave this event? You'll lose access until you're invited again.")) return;
+
+        const res = await sendOrQueue(`leave:${id}`, `/api/events/${id}/leave`, { method: "POST" });
+
+        if (res && !res.ok) {
+            const json = await res.json().catch(() => ({}));
+            window.alert(json.error ?? "Could not leave the event");
+            return;
+        }
+
+        const db = await getDb();
+        const doc = await db.events.findOne(id).exec();
+        await doc?.remove();
+    }
+
     return (
         <div className="max-w-[900px] mx-auto my-8 px-4">
             <div className="flex items-center mb-5">
@@ -177,9 +194,13 @@ export default function EventsPage() {
                                     <td className="text-muted whitespace-nowrap">{formatDate(ev.startAt)}</td>
                                     <td className="text-muted whitespace-nowrap">{formatDate(ev.endAt)}</td>
                                     <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                                        {ev.createdBy === getUserIdFromToken() && (
+                                        {ev.createdBy === getUserIdFromToken() ? (
                                             <button className="btn btn-danger" onClick={() => deleteEvent(ev.id)}>
                                                 Delete
+                                            </button>
+                                        ) : (
+                                            <button className="btn btn-danger" onClick={() => leaveEvent(ev.id)}>
+                                                Leave
                                             </button>
                                         )}
                                     </td>

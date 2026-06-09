@@ -2,6 +2,14 @@ export function makeId(): string {
     return crypto.randomUUID();
 }
 
+export function hashColor(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+        h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h) % 360;
+}
+
 export function nodeToMarkdown(node: any, listDepth = 0): string {
     if (!node) return "";
 
@@ -83,7 +91,7 @@ export function tsToDatetimeLocal(ts: number | null | undefined): string {
 }
 
 export function slugify(s: string): string {
-    return s.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_");
+    return s.replace(/[^\p{L}\p{N}\s_-]/gu, "").trim().replace(/\s+/g, "_");
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

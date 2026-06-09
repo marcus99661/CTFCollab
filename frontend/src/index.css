@@ -4,11 +4,15 @@
   --color-bg: #0e0d0c;
   --color-surface: #1a1918;
   --color-surface-2: #222120;
-  --color-border: #2e2d2b;
-  --color-text: #e6edf3;
-  --color-muted: #7a8a8f;
-  --color-accent: #4cb4c7;
   --color-navbar: #010305;
+
+  --color-text: rgba(255, 255, 255, 0.92);
+  --color-muted: rgba(255, 255, 255, 0.6);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.15);
+
+  --color-accent: #4cb4c7;
+
   --color-danger: #f85149;
   --color-success: #3fb950;
   --color-warning: #e66e12;

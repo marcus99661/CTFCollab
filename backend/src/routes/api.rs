@@ -15,6 +15,7 @@ pub fn router() -> Router<AppState> {
         .route("/events/{id}/members", get(list_members)) // List members
         .route("/events/{id}/members", post(invite_user)) // Invite user by username
         .route("/events/{id}/members/{user_id}", delete(kick_user)) // Kick user
+        .route("/events/{id}/leave", post(leave_event)) // Leave an event you're a member of
 }
 
 #[derive(Serialize)]
@@ -158,6 +159,36 @@ async fn kick_user(
     sqlx::query("DELETE FROM event_members WHERE event_id = $1 AND user_id = $2")
         .bind(&event_id)
         .bind(&target_user_id)
+        .execute(&state.db)
+        .await
+        ?;
+
+    Ok(())
+}
+
+async fn leave_event(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Path(event_id): Path<String>,
+) -> Result<(), AppError> {
+    let role = sqlx::query_scalar::<_, EventRole>(
+        "SELECT role FROM event_members WHERE event_id = $1 AND user_id = $2"
+    )
+    .bind(&event_id)
+    .bind(&auth.user_id)
+    .fetch_optional(&state.db)
+    .await
+    ?;
+
+    match role {
+        None => return Err(AppError::BadRequest("You are not a member of this event".into())),
+        Some(EventRole::Owner) => return Err(AppError::BadRequest("Owners cannot leave their own event".into())),
+        Some(EventRole::Member) => {}
+    }
+
+    sqlx::query("DELETE FROM event_members WHERE event_id = $1 AND user_id = $2")
+        .bind(&event_id)
+        .bind(&auth.user_id)
         .execute(&state.db)
         .await
         ?;

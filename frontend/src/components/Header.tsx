@@ -11,7 +11,7 @@ const allNavLinks = [
 
 const statusConfig: Record<ServerStatus, { color: string; label: string; title: string }> = {
     online: { color: "text-success", label: "Connected", title: "Server reachable" },
-    unstable: { color: "text-warning", label: "Unstable", title: "Server not responding - changes saved locally" },
+    unstable: { color: "text-warning", label: "Unstable", title: "Server connection unstable" },
     offline: { color: "text-danger", label: "Disconnected", title: "No network" },
 };
 
@@ -38,7 +38,7 @@ export default function Header() {
     }
 
     return (
-        <header className="h-[52px] bg-navbar border-b border-black/20 flex items-center px-6 gap-6 shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+        <header className="h-[52px] bg-navbar border-b border-white/10 flex items-center px-6 gap-6 shrink-0">
             <span className="text-white font-bold text-[17px] tracking-tight select-none">
                 CTFCollab
             </span>
