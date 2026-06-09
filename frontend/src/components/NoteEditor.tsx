@@ -56,21 +56,20 @@ function Divider() {
 
 function promptLink(editor: Editor) {
     const previous = editor.getAttributes("link").href ?? "";
-    const url = window.prompt("URL", previous);
+    const input = window.prompt("URL", previous);
 
-    if (url === null) return;
+    if (input === null) return;
+
+    const url = input.trim();
 
     if (url === "") {
         editor.chain().focus().extendMarkRange("link").unsetLink().run();
         return;
     }
 
-    if (!/^https?:\/\//i.test(url)) {
-        window.alert("Only http:// and https:// URLs are allowed.");
-        return;
-    }
+    const href = /^https?:\/\//i.test(url) ? url : "https://" + url;
 
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
 }
 
 function Toolbar({ editor, onDownload, onInsertImage }: { editor: Editor; onDownload: () => void; onInsertImage: () => void }) {
